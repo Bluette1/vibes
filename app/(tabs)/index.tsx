@@ -131,6 +131,7 @@ const StillSpace: React.FC = () => {
         await sound.setVolumeAsync(value);
       }
     },
+
     [sound]
   );
 
@@ -177,6 +178,18 @@ const StillSpace: React.FC = () => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  };
+
+  // Function to determine the volume icon
+  const getVolumeIcon = () => {
+    if (volume === 0) {
+      return "volume-mute"; // Mute
+    } else if (volume <= 0.5) {
+      return "volume-low"; // Low volume
+    } else if (volume <= 1) {
+      return "volume-high"; // High volume
+    }
+    return "volume-medium"; // Medium volume
   };
 
   return (
@@ -248,9 +261,9 @@ const StillSpace: React.FC = () => {
             />
           </TouchableOpacity>
         </View>
-
-        {/* Volume Control Slider */}
+        {/* Volume Control with Icon */}
         <View style={styles.volumeContainer}>
+          <Ionicons name={getVolumeIcon()} size={24} color="white" />
           <Text style={styles.volumeLabel}>
             Volume: {Math.round(volume * 100)}%
           </Text>
@@ -262,7 +275,7 @@ const StillSpace: React.FC = () => {
             minimumTrackTintColor="#FFFFFF"
             maximumTrackTintColor="#666666"
             thumbTintColor="#FFFFFF"
-            onValueChange={handleVolumeChange} 
+            onValueChange={handleVolumeChange}
           />
         </View>
       </View>
