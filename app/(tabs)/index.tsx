@@ -24,7 +24,7 @@ interface AudioPlayerStatus {
   error?: string;
 }
 
-const StillSpace: React.FC = () => {
+const Vibes: React.FC = () => {
   const [images, setImages] = useState<ImageResponse[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
 
@@ -111,8 +111,8 @@ const StillSpace: React.FC = () => {
       isBuffering: playbackStatus.isBuffering,
     }));
 
-    setPosition(playbackStatus.positionMillis);
-    setDuration(playbackStatus.durationMillis);
+    setPosition(playbackStatus.positionMillis || 0);
+    setDuration(playbackStatus.durationMillis || 0);
   };
 
   useEffect(() => {
@@ -170,10 +170,6 @@ const StillSpace: React.FC = () => {
   }, [sound]);
 
   const formatTime = (millis: number): string => {
-    if (isNaN(millis) || millis < 0) {
-      return "~"; // Default value for invalid duration
-    }
-
     const seconds = Math.floor(millis / 1000);
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
@@ -220,9 +216,12 @@ const StillSpace: React.FC = () => {
           <Text style={styles.timeText}>{formatTime(position)}</Text>
           <Slider
             style={styles.progressSlider}
-            value={position}
+            // value={position}
+            // minimumValue={0}
+            // maximumValue={duration}
+            value={isNaN(position) ? 0 : position}
             minimumValue={0}
-            maximumValue={duration}
+            maximumValue={isNaN(duration) ? 0 : duration}
             minimumTrackTintColor="#FFFFFF"
             maximumTrackTintColor="#666666"
             thumbTintColor="#FFFFFF"
@@ -326,7 +325,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   progressSlider: {
-    flex: 1,
+    width: "80%",
     marginHorizontal: 10,
   },
   timeText: {
@@ -359,4 +358,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default StillSpace;
+export default Vibes;
