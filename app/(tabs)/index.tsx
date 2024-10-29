@@ -34,9 +34,9 @@ const StillSpace: React.FC = () => {
     isPlaying: false,
     isBuffering: false,
   });
-  const [volume, setVolume] = useState<number>(1.0);
   const [position, setPosition] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
+  const [volume, setVolume] = useState<number>(1.0);
 
   useEffect(() => {
     fetchImages();
@@ -124,6 +124,16 @@ const StillSpace: React.FC = () => {
     };
   }, [loadSound]);
 
+  const handleVolumeChange = useCallback(
+    async (value: number) => {
+      setVolume(value);
+      if (sound) {
+        await sound.setVolumeAsync(value);
+      }
+    },
+    [sound]
+  );
+
   const handlePlayPause = useCallback(async () => {
     try {
       if (!sound) return;
@@ -158,21 +168,11 @@ const StillSpace: React.FC = () => {
     }
   }, [sound]);
 
-  const handleVolumeChange = useCallback(
-    async (value: number) => {
-      try {
-        setVolume(value);
-        if (sound) {
-          await sound.setVolumeAsync(value);
-        }
-      } catch (error) {
-        console.error("Error changing volume:", error);
-      }
-    },
-    [sound]
-  );
-
   const formatTime = (millis: number): string => {
+    if (isNaN(millis) || millis < 0) {
+      return "~"; // Default value for invalid duration
+    }
+
     const seconds = Math.floor(millis / 1000);
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
@@ -248,6 +248,23 @@ const StillSpace: React.FC = () => {
             />
           </TouchableOpacity>
         </View>
+
+        {/* Volume Control Slider */}
+        <View style={styles.volumeContainer}>
+          <Text style={styles.volumeLabel}>
+            Volume: {Math.round(volume * 100)}%
+          </Text>
+          <Slider
+            style={styles.volumeSlider}
+            value={volume}
+            minimumValue={0}
+            maximumValue={1}
+            minimumTrackTintColor="#FFFFFF"
+            maximumTrackTintColor="#666666"
+            thumbTintColor="#FFFFFF"
+            onValueChange={handleVolumeChange} 
+          />
+        </View>
       </View>
     </View>
   );
@@ -319,9 +336,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "80%",
   },
+  volumeLabel: {
+    color: "white",
+    marginRight: 10,
+  },
   volumeSlider: {
     flex: 1,
-    marginHorizontal: 10,
     height: 40,
   },
 });
