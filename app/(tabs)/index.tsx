@@ -8,7 +8,8 @@ import {
   Image,
 } from "react-native";
 import Slider from "@react-native-community/slider";
-import { Audio } from "expo-av";
+import { Audio, AVPlaybackStatus } from "expo-av";
+
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 
@@ -63,7 +64,16 @@ const Vibes: React.FC = () => {
 
   const loadSound = useCallback(async () => {
     try {
-      console.log("Loading Sound");
+      console.log("Starting audio load process");
+
+      // Unload any existing sound first
+      if (sound) {
+        console.log("Unloading existing sound");
+        await sound.unloadAsync();
+      }
+
+      // Configure audio mode
+      console.log("Setting audio mode");
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         staysActiveInBackground: true,
@@ -72,34 +82,91 @@ const Vibes: React.FC = () => {
         playThroughEarpieceAndroid: false,
       });
 
-      const { sound: soundObject } = await Audio.Sound.createAsync(
-        require("../../assets/focused.mp3"),
-        {
-          shouldPlay: false,
-          volume: volume,
-        },
-        onPlaybackStatusUpdate
-      );
+      console.log("Creating new sound object");
+      const { sound: soundObject, status: initialStatus } =
+        await Audio.Sound.createAsync(
+          require("../../assets/focused.mp3"),
+          {
+            shouldPlay: false,
+            volume: volume,
+            progressUpdateIntervalMillis: 100,
+            isLooping: true,
+          },
+          onPlaybackStatusUpdate
+        );
 
+      console.log("Initial sound status:", initialStatus);
       setSound(soundObject);
-      setStatus((prev) => ({ ...prev, isLoaded: true }));
+
+      if ("isLoaded" in initialStatus && initialStatus.isLoaded) {
+        setStatus((prev) => ({
+          ...prev,
+          isLoaded: true,
+          isPlaying: initialStatus.isPlaying,
+          isBuffering: initialStatus.isBuffering,
+        }));
+        setDuration(initialStatus.durationMillis ?? 0);
+      } else {
+        console.log("Sound created but not loaded:", initialStatus);
+      }
     } catch (error) {
-      console.error("Error loading sound:", error);
+      console.error("Detailed error loading sound:", error);
       setStatus((prev) => ({
         ...prev,
-        error: "Failed to load audio file",
+        error: `Failed to load audio file: ${error}`,
         isLoaded: false,
       }));
       Alert.alert("Error", "Failed to load audio file");
     }
   }, [volume]);
 
-  const onPlaybackStatusUpdate = (playbackStatus: any) => {
+  useEffect(() => {
+    console.log("Sound loading effect triggered");
+    loadSound();
+
+    return () => {
+      console.log("Cleaning up sound");
+      if (sound) {
+        sound.unloadAsync();
+      }
+    };
+  }, []);
+
+  const handlePlayPause = useCallback(async () => {
+    try {
+      if (!sound) {
+        console.log("No sound object available");
+        return;
+      }
+
+      const playbackStatus = await sound.getStatusAsync();
+      console.log("Current playback status:", playbackStatus);
+
+      if (!playbackStatus.isLoaded) {
+        console.log("Sound not loaded, attempting to reload");
+        await loadSound();
+        return;
+      }
+
+      if (playbackStatus.isPlaying) {
+        console.log("Pausing sound");
+        await sound.pauseAsync();
+      } else {
+        console.log("Playing sound");
+        await sound.playAsync();
+      }
+    } catch (error) {
+      console.error("Error in handlePlayPause:", error);
+      Alert.alert("Error", "Failed to play/pause audio");
+    }
+  }, [sound, loadSound]);
+
+  const onPlaybackStatusUpdate = (playbackStatus: AVPlaybackStatus) => {
     if (!playbackStatus.isLoaded) {
       setStatus((prev) => ({
         ...prev,
         isLoaded: false,
-        error: playbackStatus.error,
+        error: "error" in playbackStatus ? playbackStatus.error : undefined,
       }));
       return;
     }
@@ -111,8 +178,11 @@ const Vibes: React.FC = () => {
       isBuffering: playbackStatus.isBuffering,
     }));
 
-    setPosition(playbackStatus.positionMillis || 0);
-    setDuration(playbackStatus.durationMillis || 0);
+    // Provide default value of 0 if positionMillis is undefined
+    setPosition(playbackStatus.positionMillis ?? 0);
+
+    // Provide default value of 0 if durationMillis is undefined
+    setDuration(playbackStatus.durationMillis ?? 0);
   };
 
   useEffect(() => {
@@ -126,35 +196,18 @@ const Vibes: React.FC = () => {
 
   const handleVolumeChange = useCallback(
     async (value: number) => {
-      setVolume(value);
-      if (sound) {
-        await sound.setVolumeAsync(value);
+      try {
+        setVolume(value);
+        if (sound && status.isLoaded) {
+          await sound.setVolumeAsync(value);
+        }
+      } catch (error) {
+        console.error("Error changing volume:", error);
+        Alert.alert("Error", "Failed to change volume");
       }
     },
-
-    [sound]
+    [sound, status.isLoaded]
   );
-
-  const handlePlayPause = useCallback(async () => {
-    try {
-      if (!sound) return;
-
-      const playbackStatus = await sound.getStatusAsync();
-      if (!playbackStatus.isLoaded) {
-        setStatus((prev) => ({ ...prev, error: "Audio is not loaded" }));
-        return;
-      }
-
-      if (playbackStatus.isPlaying) {
-        await sound.pauseAsync();
-      } else {
-        await sound.playAsync();
-      }
-    } catch (error) {
-      console.error("Error playing/pausing:", error);
-      Alert.alert("Error", "Failed to play/pause audio");
-    }
-  }, [sound]);
 
   const handleStop = useCallback(async () => {
     try {
@@ -170,22 +223,25 @@ const Vibes: React.FC = () => {
   }, [sound]);
 
   const formatTime = (millis: number): string => {
+    if (isNaN(millis) || duration < 0) {
+      return "00:00"; // Default value for invalid duration
+    }
+
     const seconds = Math.floor(millis / 1000);
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
-  // Function to determine the volume icon
   const getVolumeIcon = () => {
     if (volume === 0) {
-      return "volume-mute"; // Mute
+      return "volume-mute";
     } else if (volume <= 0.5) {
-      return "volume-low"; // Low volume
+      return "volume-low";
     } else if (volume <= 1) {
-      return "volume-high"; // High volume
+      return "volume-high";
     }
-    return "volume-medium"; // Medium volume
+    return "volume-medium";
   };
 
   return (
@@ -216,9 +272,6 @@ const Vibes: React.FC = () => {
           <Text style={styles.timeText}>{formatTime(position)}</Text>
           <Slider
             style={styles.progressSlider}
-            // value={position}
-            // minimumValue={0}
-            // maximumValue={duration}
             value={isNaN(position) ? 0 : position}
             minimumValue={0}
             maximumValue={isNaN(duration) ? 0 : duration}
@@ -325,7 +378,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   progressSlider: {
-    width: "80%",
+    width: "90%",
     marginHorizontal: 10,
   },
   timeText: {
