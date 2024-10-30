@@ -52,9 +52,10 @@ const Vibes: React.FC = () => {
   }, [images]);
 
   const fetchImages = async () => {
+    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'
     try {
       const response = await axios.get<ImageResponse[]>(
-        "http://localhost:3000/api/images"
+        `${apiUrl}/api/images`
       );
       setImages(response.data);
     } catch (error) {
