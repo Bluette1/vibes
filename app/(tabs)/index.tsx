@@ -130,7 +130,7 @@ const Vibes: React.FC = () => {
         sound.unloadAsync();
       }
     };
-  }, []);
+  }, [sound]);
 
   const handlePlayPause = useCallback(async () => {
     try {
@@ -293,6 +293,7 @@ const Vibes: React.FC = () => {
             style={styles.controlButton}
             activeOpacity={0.7}
             disabled={!status.isLoaded}
+            testID="play-button"
           >
             <Ionicons
               name={status.isPlaying ? "pause-circle" : "play-circle"}
@@ -305,6 +306,7 @@ const Vibes: React.FC = () => {
             style={styles.controlButton}
             activeOpacity={0.7}
             disabled={!status.isLoaded}
+            testID="stop-button"
           >
             <Ionicons
               name="stop-circle"
@@ -315,7 +317,7 @@ const Vibes: React.FC = () => {
         </View>
         {/* Volume Control with Icon */}
         <View style={styles.volumeContainer}>
-          <Ionicons name={getVolumeIcon()} size={24} color="white" />
+          <Ionicons testID={`volume-icon-${getVolumeIcon()}`} name={getVolumeIcon()} size={24} color="white" />
           <Text style={styles.volumeLabel}>
             Volume: {Math.round(volume * 100)}%
           </Text>
@@ -328,6 +330,7 @@ const Vibes: React.FC = () => {
             maximumTrackTintColor="#666666"
             thumbTintColor="#FFFFFF"
             onValueChange={handleVolumeChange}
+            testID="volume-slider"
           />
         </View>
       </View>
