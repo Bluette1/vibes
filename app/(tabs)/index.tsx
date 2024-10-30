@@ -130,7 +130,7 @@ const Vibes: React.FC = () => {
         sound.unloadAsync();
       }
     };
-  }, [sound]);
+  }, []); // Remove loadSound from dependencies to prevent infinite loop
 
   const handlePlayPause = useCallback(async () => {
     try {
@@ -185,15 +185,6 @@ const Vibes: React.FC = () => {
     setDuration(playbackStatus.durationMillis ?? 0);
   };
 
-  useEffect(() => {
-    loadSound();
-    return () => {
-      if (sound) {
-        sound.unloadAsync();
-      }
-    };
-  }, [loadSound]);
-
   const handleVolumeChange = useCallback(
     async (value: number) => {
       try {
@@ -224,7 +215,7 @@ const Vibes: React.FC = () => {
 
   const formatTime = (millis: number): string => {
     if (isNaN(millis) || duration < 0) {
-      return "00:00"; // Default value for invalid duration
+      return "0:00"; // Default value for invalid duration
     }
 
     const seconds = Math.floor(millis / 1000);
@@ -317,7 +308,12 @@ const Vibes: React.FC = () => {
         </View>
         {/* Volume Control with Icon */}
         <View style={styles.volumeContainer}>
-          <Ionicons testID={`volume-icon-${getVolumeIcon()}`} name={getVolumeIcon()} size={24} color="white" />
+          <Ionicons
+            testID={`volume-icon-${getVolumeIcon()}`}
+            name={getVolumeIcon()}
+            size={24}
+            color="white"
+          />
           <Text style={styles.volumeLabel}>
             Volume: {Math.round(volume * 100)}%
           </Text>
