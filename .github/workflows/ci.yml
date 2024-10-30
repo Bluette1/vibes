@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop, feature/bacground-music-for-meditation-3]
+    branches: [ main, develop, deploy-web-app]
   pull_request:
-    branches: [ main, develop, feature/bacground-music-for-meditation-3]
+    branches: [ main, develop, deploy-web-app]
 
 jobs:
   test:
@@ -46,111 +46,4 @@ jobs:
         run: yarn test -- --coverage
         
 
-  build:
-    needs: test
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18.x'
-          cache: 'npm'
-          
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-        
-      - name: Build
-        run: yarn run build || true
-        
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: build-artifacts
-          path: dist/
-
-  e2e:
-    needs: build
-    runs-on: macos-latest
-    
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18.x'
-          cache: 'npm'
-          
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-        
-      - name: Cache Expo modules
-        uses: actions/cache@v3
-        with:
-          path: ~/.expo
-          key: expo-modules-${{ hashFiles('**/package-lock.json') }}
-
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          expo-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-      
-
-  deploy-staging:
-    if: github.ref == 'refs/heads/develop'
-    needs: [test, build, e2e]
-    runs-on: ubuntu-latest
-    
-    env:
-      EXPO_PUBLIC_API_URL: https://vibes-api-space-f970ef69ea72.herokuapp.com
-      
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18.x'
-        
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          expo-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-          
-      - name: Deploy to Expo Staging
-        run: |
-          expo login -u ${{ secrets.EXPO_USERNAME }} -p ${{ secrets.EXPO_PASSWORD }}
-          expo publish --release-channel staging
-
-  deploy-production:
-    if: github.ref == 'refs/heads/main'
-    needs: [test, build, e2e]
-    runs-on: ubuntu-latest
-    environment: production
-    
-    env:
-      EXPO_PUBLIC_API_URL: https://vibes-api-space-f970ef69ea72.herokuapp.com
-      
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18.x'
-        
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          expo-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-          
-      - name: Deploy to Expo Production
-        run: |
-          expo login -u ${{ secrets.EXPO_USERNAME }} -p ${{ secrets.EXPO_PASSWORD }}
-          expo publish --release-channel production
+  
