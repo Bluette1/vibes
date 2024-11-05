@@ -6,6 +6,15 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Alert, Image } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { CacheService } from '../utils/cacheService';
+
+const consoleError = console.error;
+console.error = (...args: any[]) => {
+  if (args[0] && args[0].includes && args[0].includes('findDOMNode')) {
+    return;
+  }
+  consoleError(...args);
+};
+
 interface ImageResponse {
   src: string;
   alt: string;
@@ -41,6 +50,110 @@ const Vibes: React.FC = () => {
     isOffline: false,
     cachedImages: {},
     cachedAudio: null,
+  });
+
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      position: 'relative',
+      alignItems: 'center',
+      backgroundColor: '#1E1E1E',
+    },
+    imageContainer: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    image: {
+      width: '100%',
+      height: '100%',
+      transition: 'opacity 0.5s ease-in-out',
+    },
+    debugContainer: {
+      position: 'absolute',
+      top: 50,
+      left: 20,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      padding: 10,
+      borderRadius: 5,
+    },
+    debugText: {
+      color: 'white',
+      marginVertical: 2,
+    },
+    errorText: {
+      color: '#ff4444',
+    },
+    controlsContainer: {
+      position: 'absolute',
+      bottom: 50,
+      width: '100%',
+      alignItems: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      padding: 20,
+      borderRadius: 10,
+    },
+    progressContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      width: '90%',
+      marginBottom: 20,
+    },
+    progressSlider: {
+      width: '90%',
+      marginHorizontal: 10,
+    },
+    timeText: {
+      color: 'white',
+      fontSize: 12,
+      width: 45,
+      textAlign: 'center',
+    },
+    buttonContainer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    controlButton: {
+      marginHorizontal: 10,
+    },
+    volumeContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      width: '80%',
+    },
+    volumeLabel: {
+      color: 'white',
+      marginRight: 10,
+    },
+    volumeSlider: {
+      flex: 1,
+      height: 40,
+    },
+    offlineIndicator: {
+      position: 'absolute',
+      top: 40,
+      right: 20,
+      backgroundColor: 'rgba(255, 215, 0, 0.8)',
+      padding: 8,
+      borderRadius: 5,
+    },
+    offlineText: {
+      color: '#000',
+      fontWeight: 'bold',
+    },
+    imagePlaceholder: {
+      width: '100%',
+      height: '100%',
+      position: 'absolute',
+      backgroundColor: '#1E1E1E',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    placeholderText: {
+      color: 'white',
+      fontSize: 16,
+    },
   });
 
   useEffect(() => {
@@ -289,14 +402,27 @@ const Vibes: React.FC = () => {
     return 'volume-medium';
   };
 
+  // Ensure currentImageIndex is always valid
+  useEffect(() => {
+    if (images.length > 0) {
+      setCurrentImageIndex((prevIndex) => Math.min(prevIndex, images.length - 1));
+    } else {
+      setCurrentImageIndex(0);
+    }
+  }, [images.length]);
+
+
   return (
     <View style={styles.container}>
-      {images.length > 0 && (
-        <Image
-          source={{ uri: images[currentImageIndex].src }}
-          style={styles.image}
-          resizeMode="cover"
-        />
+      {images.length > 0 && images[currentImageIndex] && (
+        <View style={styles.imageContainer}>
+          <Image
+            source={{ uri: images[currentImageIndex].src }}
+            style={styles.image}
+            resizeMode="cover"
+            defaultSource={{ uri: "../assets/screenshot-vibes-home-page.png"}}
+          />
+        </View>
       )}
       <View style={styles.debugContainer}>
         <Text style={styles.debugText}>Status: {status.isLoaded ? 'Loaded' : 'Not loaded'}</Text>
@@ -378,93 +504,5 @@ const Vibes: React.FC = () => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1E1E1E',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
-  },
-  debugContainer: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 10,
-    borderRadius: 5,
-  },
-  debugText: {
-    color: 'white',
-    marginVertical: 2,
-  },
-  errorText: {
-    color: '#ff4444',
-  },
-  controlsContainer: {
-    position: 'absolute',
-    bottom: 50,
-    width: '100%',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 20,
-    borderRadius: 10,
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '90%',
-    marginBottom: 20,
-  },
-  progressSlider: {
-    width: '90%',
-    marginHorizontal: 10,
-  },
-  timeText: {
-    color: 'white',
-    fontSize: 12,
-    width: 45,
-    textAlign: 'center',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  controlButton: {
-    marginHorizontal: 10,
-  },
-  volumeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '80%',
-  },
-  volumeLabel: {
-    color: 'white',
-    marginRight: 10,
-  },
-  volumeSlider: {
-    flex: 1,
-    height: 40,
-  },
-  offlineIndicator: {
-    position: 'absolute',
-    top: 40,
-    right: 20,
-    backgroundColor: 'rgba(255, 215, 0, 0.8)',
-    padding: 8,
-    borderRadius: 5,
-  },
-  offlineText: {
-    color: '#000',
-    fontWeight: 'bold',
-  },
-});
 
 export default Vibes;
