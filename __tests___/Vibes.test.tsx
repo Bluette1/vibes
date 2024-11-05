@@ -195,24 +195,6 @@ describe('Vibes Component', () => {
     });
   });
 
-  it.skip('cleans up resources on unmount', async () => {
-    const { unmount } = render(<Vibes />);
-
-    // Wait for initial load
-    await waitFor(() => {
-      expect(Audio.Sound.createAsync).toHaveBeenCalled();
-    });
-
-    // Optionally wait for sound to be set if needed
-    await waitFor(() => {
-      expect(mockSound).toBeTruthy();
-    });
-
-    unmount();
-
-    expect(mockSound.unloadAsync).toHaveBeenCalled();
-  });
-
   it('updates volume icon based on volume level', async () => {
     const { getByTestId } = render(<Vibes />);
 
@@ -232,13 +214,6 @@ describe('Vibes Component', () => {
       // Check if the correct icon is displayed
       expect(getByTestId(`volume-icon-${expectedIcon}`)).toBeTruthy();
     }
-  });
-
-  it('should handle AsyncStorage operations', async () => {
-    // Mock implementations for specific tests
-    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify({ key: 'value' }));
-
-    // Add test code here
   });
 
   it('handles offline state', async () => {
