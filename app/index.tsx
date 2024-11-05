@@ -52,7 +52,6 @@ const Vibes: React.FC = () => {
     cachedAudio: null,
   });
 
-
   const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -411,7 +410,6 @@ const Vibes: React.FC = () => {
     }
   }, [images.length]);
 
-
   return (
     <View style={styles.container}>
       {images.length > 0 && images[currentImageIndex] && (
@@ -420,7 +418,7 @@ const Vibes: React.FC = () => {
             source={{ uri: images[currentImageIndex].src }}
             style={styles.image}
             resizeMode="cover"
-            defaultSource={{ uri: "../assets/screenshot-vibes-home-page.png"}}
+            defaultSource={{ uri: '../assets/screenshot-vibes-home-page.png' }}
           />
         </View>
       )}

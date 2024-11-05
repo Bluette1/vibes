@@ -10,9 +10,9 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 jest.mock('expo-file-system');
 
 jest.mock('expo-file-system', () => ({
-  cacheDirectory: 'some/local/path/', 
+  cacheDirectory: 'some/local/path/',
   downloadAsync: jest.fn(),
-  getInfoAsync: jest.fn(), 
+  getInfoAsync: jest.fn(),
   makeDirectoryAsync: jest.fn(),
   deleteAsync: jest.fn(),
 }));
@@ -21,7 +21,7 @@ describe('CacheService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (FileSystem.downloadAsync as jest.Mock).mockResolvedValue({
-      uri: 'some/local/path/image.jpg', 
+      uri: 'some/local/path/image.jpg',
     });
   });
 
@@ -39,7 +39,7 @@ describe('CacheService', () => {
 
   it('should cache a file', async () => {
     const url = 'http://example.com/image.jpg';
-    const expectedPath = 'some/local/path/vibes_cache/1730780894231_image.jpg'; 
+    const expectedPath = 'some/local/path/vibes_cache/1730780894231_image.jpg';
     const cachedPath = await CacheService.cacheFile(url);
 
     expect(cachedPath).toMatch(/vibes_cache\/\d+_image.jpg/); // Use regex to match the pattern
