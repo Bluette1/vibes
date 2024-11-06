@@ -63,8 +63,8 @@ const Vibes: React.FC = () => {
       ...StyleSheet.absoluteFillObject,
     },
     image: {
-      width: '100%',
-      height: '100%',
+      width: 200,
+      height: 200,
       transition: 'opacity 0.5s ease-in-out',
     },
     debugContainer: {
@@ -418,6 +418,7 @@ const Vibes: React.FC = () => {
             source={{ uri: images[currentImageIndex].src }}
             style={styles.image}
             resizeMode="cover"
+            onError={(error) => console.error('Image load error:', error.nativeEvent.error)}
             defaultSource={{ uri: '../assets/screenshot-vibes-home-page.png' }}
           />
         </View>
