@@ -4,6 +4,16 @@ import axios from 'axios';
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Alert, Image } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
+import { CacheService } from '../utils/cacheService';
+
+const consoleError = console.error;
+console.error = (...args: any[]) => {
+  if (args[0] && args[0].includes && args[0].includes('findDOMNode')) {
+    return;
+  }
+  consoleError(...args);
+};
 
 interface ImageResponse {
   src: string;
@@ -15,6 +25,11 @@ interface AudioPlayerStatus {
   isPlaying: boolean;
   isBuffering: boolean;
   error?: string;
+}
+interface OfflineState {
+  isOffline: boolean;
+  cachedImages: { [key: string]: string };
+  cachedAudio: string | null;
 }
 
 const Vibes: React.FC = () => {
@@ -31,6 +46,129 @@ const Vibes: React.FC = () => {
   const [duration, setDuration] = useState<number>(0);
   const [volume, setVolume] = useState<number>(1.0);
 
+  const [offlineState, setOfflineState] = useState<OfflineState>({
+    isOffline: false,
+    cachedImages: {},
+    cachedAudio: null,
+  });
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      position: 'relative',
+      alignItems: 'center',
+      backgroundColor: '#1E1E1E',
+    },
+    imageContainer: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    image: {
+      width: '100%',
+      height: '100%',
+      transition: 'opacity 0.5s ease-in-out',
+    },
+    debugContainer: {
+      position: 'absolute',
+      top: 50,
+      left: 20,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      padding: 10,
+      borderRadius: 5,
+    },
+    debugText: {
+      color: 'white',
+      marginVertical: 2,
+    },
+    errorText: {
+      color: '#ff4444',
+    },
+    controlsContainer: {
+      position: 'absolute',
+      bottom: 50,
+      width: '100%',
+      alignItems: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      padding: 20,
+      borderRadius: 10,
+    },
+    progressContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      width: '90%',
+      marginBottom: 20,
+    },
+    progressSlider: {
+      width: '90%',
+      marginHorizontal: 10,
+    },
+    timeText: {
+      color: 'white',
+      fontSize: 12,
+      width: 45,
+      textAlign: 'center',
+    },
+    buttonContainer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    controlButton: {
+      marginHorizontal: 10,
+    },
+    volumeContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      width: '80%',
+    },
+    volumeLabel: {
+      color: 'white',
+      marginRight: 10,
+    },
+    volumeSlider: {
+      flex: 1,
+      height: 40,
+    },
+    offlineIndicator: {
+      position: 'absolute',
+      top: 40,
+      right: 20,
+      backgroundColor: 'rgba(255, 215, 0, 0.8)',
+      padding: 8,
+      borderRadius: 5,
+    },
+    offlineText: {
+      color: '#000',
+      fontWeight: 'bold',
+    },
+    imagePlaceholder: {
+      width: '100%',
+      height: '100%',
+      position: 'absolute',
+      backgroundColor: '#1E1E1E',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    placeholderText: {
+      color: 'white',
+      fontSize: 16,
+    },
+  });
+
+  useEffect(() => {
+    const checkConnectivity = async () => {
+      const netInfo = await NetInfo.fetch();
+      setOfflineState((prev) => ({ ...prev, isOffline: !netInfo.isConnected }));
+    };
+
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setOfflineState((prev) => ({ ...prev, isOffline: !state.isConnected }));
+    });
+
+    checkConnectivity();
+    return () => unsubscribe();
+  }, []);
+
   useEffect(() => {
     fetchImages();
 
@@ -46,8 +184,37 @@ const Vibes: React.FC = () => {
   const fetchImages = async () => {
     const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
     try {
+      if (offlineState.isOffline) {
+        // Use cached images if available
+        const cachedImagesUrls = Object.keys(offlineState.cachedImages);
+        if (cachedImagesUrls.length > 0) {
+          const cachedImageResponses = cachedImagesUrls.map((url) => ({
+            src: offlineState.cachedImages[url],
+            alt: 'Cached image',
+          }));
+          setImages(cachedImageResponses);
+          return;
+        }
+      }
+
       const response = await axios.get<ImageResponse[]>(`${apiUrl}/api/images`);
       setImages(response.data);
+
+      // Cache images for offline use
+      const cachedImages: { [key: string]: string } = {};
+      for (const image of response.data) {
+        try {
+          const cachedPath = await CacheService.cacheFile(image.src);
+          cachedImages[image.src] = cachedPath;
+        } catch (error) {
+          console.error('Failed to cache image:', error);
+        }
+      }
+
+      setOfflineState((prev) => ({
+        ...prev,
+        cachedImages,
+      }));
     } catch (error) {
       console.error(error);
     }
@@ -57,14 +224,10 @@ const Vibes: React.FC = () => {
     try {
       console.log('Starting audio load process');
 
-      // Unload any existing sound first
       if (sound) {
-        console.log('Unloading existing sound');
         await sound.unloadAsync();
       }
 
-      // Configure audio mode
-      console.log('Setting audio mode');
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         staysActiveInBackground: true,
@@ -73,9 +236,25 @@ const Vibes: React.FC = () => {
         playThroughEarpieceAndroid: false,
       });
 
-      console.log('Creating new sound object');
+      // Handle offline audio
+      let audioSource;
+      if (offlineState.isOffline && offlineState.cachedAudio) {
+        audioSource = { uri: offlineState.cachedAudio };
+      } else {
+        audioSource = require('../assets/focused.mp3');
+        // Cache the audio file if online
+        if (!offlineState.isOffline) {
+          try {
+            const cachedPath = await CacheService.cacheFile(audioSource);
+            setOfflineState((prev) => ({ ...prev, cachedAudio: cachedPath }));
+          } catch (error) {
+            console.error('Failed to cache audio:', error);
+          }
+        }
+      }
+
       const { sound: soundObject, status: initialStatus } = await Audio.Sound.createAsync(
-        require('../assets/focused.mp3'),
+        audioSource,
         {
           shouldPlay: false,
           volume,
@@ -85,7 +264,6 @@ const Vibes: React.FC = () => {
         onPlaybackStatusUpdate
       );
 
-      console.log('Initial sound status:', initialStatus);
       setSound(soundObject);
 
       if ('isLoaded' in initialStatus && initialStatus.isLoaded) {
@@ -96,8 +274,6 @@ const Vibes: React.FC = () => {
           isBuffering: initialStatus.isBuffering,
         }));
         setDuration(initialStatus.durationMillis ?? 0);
-      } else {
-        console.log('Sound created but not loaded:', initialStatus);
       }
     } catch (error) {
       console.error('Detailed error loading sound:', error);
@@ -108,7 +284,7 @@ const Vibes: React.FC = () => {
       }));
       Alert.alert('Error', 'Failed to load audio file');
     }
-  }, [volume]);
+  }, [volume, offlineState.isOffline, offlineState.cachedAudio]);
 
   useEffect(() => {
     console.log('Sound loading effect triggered');
@@ -225,14 +401,26 @@ const Vibes: React.FC = () => {
     return 'volume-medium';
   };
 
+  // Ensure currentImageIndex is always valid
+  useEffect(() => {
+    if (images.length > 0) {
+      setCurrentImageIndex((prevIndex) => Math.min(prevIndex, images.length - 1));
+    } else {
+      setCurrentImageIndex(0);
+    }
+  }, [images.length]);
+
   return (
     <View style={styles.container}>
-      {images.length > 0 && (
-        <Image
-          source={{ uri: images[currentImageIndex].src }}
-          style={styles.image}
-          resizeMode="cover"
-        />
+      {images.length > 0 && images[currentImageIndex] && (
+        <View style={styles.imageContainer}>
+          <Image
+            source={{ uri: images[currentImageIndex].src }}
+            style={styles.image}
+            resizeMode="cover"
+            defaultSource={{ uri: '../assets/screenshot-vibes-home-page.png' }}
+          />
+        </View>
       )}
       <View style={styles.debugContainer}>
         <Text style={styles.debugText}>Status: {status.isLoaded ? 'Loaded' : 'Not loaded'}</Text>
@@ -284,6 +472,11 @@ const Vibes: React.FC = () => {
             <Ionicons name="stop-circle" size={60} color={status.isLoaded ? 'white' : '#666666'} />
           </TouchableOpacity>
         </View>
+        {offlineState.isOffline && (
+          <View style={styles.offlineIndicator}>
+            <Text style={styles.offlineText}>Offline Mode</Text>
+          </View>
+        )}
         {/* Volume Control with Icon */}
         <View style={styles.volumeContainer}>
           <Ionicons
@@ -309,81 +502,5 @@ const Vibes: React.FC = () => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1E1E1E',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
-  },
-  debugContainer: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 10,
-    borderRadius: 5,
-  },
-  debugText: {
-    color: 'white',
-    marginVertical: 2,
-  },
-  errorText: {
-    color: '#ff4444',
-  },
-  controlsContainer: {
-    position: 'absolute',
-    bottom: 50,
-    width: '100%',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 20,
-    borderRadius: 10,
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '90%',
-    marginBottom: 20,
-  },
-  progressSlider: {
-    width: '90%',
-    marginHorizontal: 10,
-  },
-  timeText: {
-    color: 'white',
-    fontSize: 12,
-    width: 45,
-    textAlign: 'center',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  controlButton: {
-    marginHorizontal: 10,
-  },
-  volumeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '80%',
-  },
-  volumeLabel: {
-    color: 'white',
-    marginRight: 10,
-  },
-  volumeSlider: {
-    flex: 1,
-    height: 40,
-  },
-});
 
 export default Vibes;
