@@ -40,6 +40,7 @@ const Vibes: React.FC = () => {
   const [currentImage, setCurrentImage] = useState<string>('');
   const [nextImage, setNextImage] = useState<string>('');
   const fadeAnim = useState(new Animated.Value(1))[0];
+  const [isLoading, setIsLoading] = useState(true);
 
   const [sound, setSound] = useState<Audio.Sound>();
   const [status, setStatus] = useState<AudioPlayerStatus>({
@@ -169,6 +170,19 @@ const Vibes: React.FC = () => {
   });
 
   useEffect(() => {
+    console.log('Component mounted');
+    return () => console.log('Component unmounted');
+  }, []);
+
+  useEffect(() => {
+    console.log('Images state changed:', images.length);
+  }, [images]);
+
+  useEffect(() => {
+    console.log('Sound status changed:', status);
+  }, [status]);
+
+  useEffect(() => {
     const checkConnectivity = async () => {
       const netInfo = await NetInfo.fetch();
       setOfflineState((prev) => ({ ...prev, isOffline: !netInfo.isConnected }));
@@ -197,10 +211,12 @@ const Vibes: React.FC = () => {
   // Updated cycling effect
   useEffect(() => {
     if (!images || images.length === 0) return;
+    if (!images[currentImageIndex]) return;
 
+    //   console.log('Cycling to image index:', nextIndex); // Debug log
     const cycleImage = async () => {
       const nextIndex = (currentImageIndex + 1) % images.length;
-      console.log('Cycling to image index:', nextIndex); // Debug log
+      if (nextIndex === currentImageIndex) return;
 
       try {
         // Preload next image
@@ -249,7 +265,9 @@ const Vibes: React.FC = () => {
   }, [images, currentImageIndex]);
 
   const fetchImages = async () => {
-    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+    setIsLoading(true);
+    const apiUrl =
+      process.env.EXPO_PUBLIC_API_URL || 'https://vibes-api-space-f970ef69ea72.herokuapp.com';
     try {
       if (offlineState.isOffline) {
         // Use cached images if available
@@ -264,26 +282,31 @@ const Vibes: React.FC = () => {
         }
       }
 
-      const response = await axios.get<ImageResponse[]>(`${apiUrl}/api/images`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+      const response = await axios.get<ImageResponse[]>(`${apiUrl}/api/images`, {
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
       setImages(response.data);
-
-      // Cache images for offline use
-      const cachedImages: { [key: string]: string } = {};
-      for (const image of response.data) {
-        try {
-          const cachedPath = await CacheService.cacheFile(image.src);
-          cachedImages[image.src] = cachedPath;
-        } catch (error) {
-          console.error('Failed to cache image:', error);
-        }
-      }
-
-      setOfflineState((prev) => ({
-        ...prev,
-        cachedImages,
-      }));
     } catch (error) {
-      console.error(error);
+      if (axios.isAxiosError(error) && error.code === 'ECONNABORTED') {
+        console.error('Request timed out');
+      }
+      // Handle cached images as fallback
+      const cachedImagesUrls = Object.keys(offlineState.cachedImages);
+      if (cachedImagesUrls.length > 0) {
+        setImages(
+          cachedImagesUrls.map((url) => ({
+            src: offlineState.cachedImages[url],
+            alt: 'Cached image',
+          }))
+        );
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -354,8 +377,12 @@ const Vibes: React.FC = () => {
   }, [volume, offlineState.isOffline, offlineState.cachedAudio]);
 
   useEffect(() => {
-    console.log('Sound loading effect triggered');
-    loadSound();
+    const initSound = async () => {
+      console.log('Sound loading effect triggered');
+      await loadSound();
+    };
+
+    initSound();
 
     return () => {
       console.log('Cleaning up sound');
@@ -363,7 +390,7 @@ const Vibes: React.FC = () => {
         sound.unloadAsync();
       }
     };
-  }, []); // Remove loadSound from dependencies to prevent infinite loop
+  }, []);
 
   const handlePlayPause = useCallback(async () => {
     try {
@@ -472,7 +499,11 @@ const Vibes: React.FC = () => {
     <>
       <Stack.Screen options={{ title: 'Home' }} />
       <Container>
-        {images.length > 0 && (
+        {isLoading || images.length == 0 ? (
+          <View style={styles.imagePlaceholder}>
+            <Text style={styles.placeholderText}>Loading...</Text>
+          </View>
+        ) : (
           <View style={styles.imageContainer}>
             <Animated.View
               style={[
@@ -486,6 +517,7 @@ const Vibes: React.FC = () => {
                 source={{ uri: currentImage }}
                 style={styles.image}
                 resizeMode="cover"
+                defaultSource={{ uri: '../assets/screenshot-vibes-home-page.png' }}
                 onError={(error) => console.error('Image load error:', error.nativeEvent.error)}
               />
             </Animated.View>
@@ -496,6 +528,7 @@ const Vibes: React.FC = () => {
                 source={{ uri: nextImage }}
                 style={styles.image}
                 resizeMode="cover"
+                defaultSource={{ uri: '../assets/screenshot-vibes-home-page.png' }}
                 onError={(error) => console.error('Image load error:', error.nativeEvent.error)}
               />
             </View>
