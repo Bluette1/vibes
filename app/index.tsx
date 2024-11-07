@@ -34,13 +34,25 @@ interface OfflineState {
   cachedAudio: string | null;
 }
 
+interface LoadingState {
+  isInitializing: boolean;
+  isLoading: boolean;
+  retryCount: number;
+  error: string | null;
+}
+
 const Vibes: React.FC = () => {
   const [images, setImages] = useState<ImageResponse[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
   const [currentImage, setCurrentImage] = useState<string>('');
   const [nextImage, setNextImage] = useState<string>('');
   const fadeAnim = useState(new Animated.Value(1))[0];
-  const [isLoading, setIsLoading] = useState(true);
+  const [loadingState, setLoadingState] = useState<LoadingState>({
+    isInitializing: true,
+    isLoading: false,
+    retryCount: 0,
+    error: null,
+  });
 
   const [sound, setSound] = useState<Audio.Sound>();
   const [status, setStatus] = useState<AudioPlayerStatus>({
@@ -169,6 +181,31 @@ const Vibes: React.FC = () => {
     },
   });
 
+  const loadingStyles = {
+    loadingContainer: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: '#1E1E1E',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1000,
+    },
+    loadingText: {
+      color: 'white',
+      fontSize: 18,
+      marginTop: 10,
+    },
+    retryButton: {
+      backgroundColor: '#4A90E2',
+      padding: 10,
+      borderRadius: 5,
+      marginTop: 15,
+    },
+    retryButtonText: {
+      color: 'white',
+      fontSize: 16,
+    },
+  };
+
   useEffect(() => {
     console.log('Component mounted');
     return () => console.log('Component unmounted');
@@ -207,6 +244,39 @@ const Vibes: React.FC = () => {
   const preloadImage = async (uri: string): Promise<boolean> => {
     return Image.prefetch(uri);
   };
+
+  // Modify the initialization logic in useEffect
+  useEffect(() => {
+    const initializeApp = async () => {
+      setLoadingState((prev) => ({ ...prev, isLoading: true, error: null }));
+      try {
+        await Promise.all([fetchImages(), loadSound()]);
+        setLoadingState((prev) => ({
+          ...prev,
+          isInitializing: false,
+          isLoading: false,
+        }));
+      } catch (error) {
+        setLoadingState((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: 'Failed to initialize app. Please try again.',
+          retryCount: prev.retryCount + 1,
+        }));
+      }
+    };
+
+    initializeApp();
+  }, []); // Empty dependency array for initial load only
+
+  // Add retry handler
+  const handleRetry = useCallback(() => {
+    setLoadingState((prev) => ({
+      ...prev,
+      isInitializing: true,
+      error: null,
+    }));
+  }, []);
 
   // Updated cycling effect
   useEffect(() => {
@@ -255,7 +325,7 @@ const Vibes: React.FC = () => {
       setCurrentImage(images[0].src);
     }
 
-    const intervalId = setInterval(cycleImage, 5000);
+    const intervalId = setInterval(cycleImage, 30000);
     console.log('Interval set'); // Debug log
 
     return () => {
@@ -264,13 +334,11 @@ const Vibes: React.FC = () => {
     };
   }, [images, currentImageIndex]);
 
+  // Modify the fetchImages function
   const fetchImages = async () => {
-    setIsLoading(true);
-    const apiUrl =
-      process.env.EXPO_PUBLIC_API_URL || 'https://vibes-api-space-f970ef69ea72.herokuapp.com';
+    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://vibes-api-space-f970ef69ea72.herokuapp.com';
     try {
       if (offlineState.isOffline) {
-        // Use cached images if available
         const cachedImagesUrls = Object.keys(offlineState.cachedImages);
         if (cachedImagesUrls.length > 0) {
           const cachedImageResponses = cachedImagesUrls.map((url) => ({
@@ -282,31 +350,32 @@ const Vibes: React.FC = () => {
         }
       }
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-
-      const response = await axios.get<ImageResponse[]>(`${apiUrl}/api/images`, {
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
+      const response = await axios.get<ImageResponse[]>(`${apiUrl}/api/images`);
+      if (!response.data || response.data.length === 0) {
+        throw new Error('No images received from server');
+      }
       setImages(response.data);
+
+      // Cache images for offline use
+      const cachedImages: { [key: string]: string } = {};
+      await Promise.all(
+        response.data.map(async (image) => {
+          try {
+            const cachedPath = await CacheService.cacheFile(image.src);
+            cachedImages[image.src] = cachedPath;
+          } catch (error) {
+            console.error('Failed to cache image:', error);
+          }
+        })
+      );
+
+      setOfflineState((prev) => ({
+        ...prev,
+        cachedImages,
+      }));
     } catch (error) {
-      if (axios.isAxiosError(error) && error.code === 'ECONNABORTED') {
-        console.error('Request timed out');
-      }
-      // Handle cached images as fallback
-      const cachedImagesUrls = Object.keys(offlineState.cachedImages);
-      if (cachedImagesUrls.length > 0) {
-        setImages(
-          cachedImagesUrls.map((url) => ({
-            src: offlineState.cachedImages[url],
-            alt: 'Cached image',
-          }))
-        );
-      }
-    } finally {
-      setIsLoading(false);
+      console.error('Failed to fetch images:', error);
+      throw error;
     }
   };
 
@@ -499,11 +568,25 @@ const Vibes: React.FC = () => {
     <>
       <Stack.Screen options={{ title: 'Home' }} />
       <Container>
-        {isLoading || images.length == 0 ? (
-          <View style={styles.imagePlaceholder}>
-            <Text style={styles.placeholderText}>Loading...</Text>
+        {loadingState.isInitializing && (
+          <View style={loadingStyles.loadingContainer}>
+            <Ionicons name="reload-circle" size={50} color="white" />
+            <Text style={loadingStyles.loadingText}>
+              {loadingState.isLoading ? 'Loading...' : 'Initializing...'}
+            </Text>
+            {loadingState.error && (
+              <>
+                <Text style={[loadingStyles.loadingText, { color: '#ff4444' }]}>
+                  {loadingState.error}
+                </Text>
+                <TouchableOpacity style={loadingStyles.retryButton} onPress={handleRetry}>
+                  <Text style={loadingStyles.retryButtonText}>Retry</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
-        ) : (
+        )}
+        {images.length > 0 && (
           <View style={styles.imageContainer}>
             <Animated.View
               style={[
