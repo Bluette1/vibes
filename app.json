@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "Vibes",
+    "name": "vibes",
     "slug": "vibes",
     "version": "1.0.0",
-    "scheme": ["vibes"],
+    "scheme": "vibes",
     "web": {
       "bundler": "metro",
       "output": "static",
@@ -28,21 +28,19 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.Vibes"
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.anonymous.Vibes"
+      "package": "com.marys.vibes"
     },
     "extra": {
       "eas": {
         "projectId": "6a43fa1c-5faf-4ed7-82cd-7f80816db88e"
       }
-    },
-    "owner": "marys"
+    }
   }
 }

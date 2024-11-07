@@ -1,6 +1,6 @@
 {
   "cesVersion": "2.11.25",
-  "projectName": "Vibes",
+  "projectName": "vibes",
   "packages": [
     {
       "name": "expo-router",
@@ -30,6 +30,6 @@
     "type": "Linux",
     "platform": "linux",
     "arch": "x64",
-    "kernelVersion": "6.8.0-47-generic"
+    "kernelVersion": "6.8.0-48-generic"
   }
 }

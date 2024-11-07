@@ -1,9 +1,11 @@
+import { Stack } from 'expo-router';
+import { Container } from '~/components/Container';
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import axios from 'axios';
 import { Audio, AVPlaybackStatus } from 'expo-av';
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Alert, Image } from 'react-native';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { View, StyleSheet, TouchableOpacity, Text, Alert, Image, Animated } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { CacheService } from '../utils/cacheService';
 
@@ -35,6 +37,9 @@ interface OfflineState {
 const Vibes: React.FC = () => {
   const [images, setImages] = useState<ImageResponse[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
+  const [currentImage, setCurrentImage] = useState<string>('');
+  const [nextImage, setNextImage] = useState<string>('');
+  const fadeAnim = useState(new Animated.Value(1))[0];
 
   const [sound, setSound] = useState<Audio.Sound>();
   const [status, setStatus] = useState<AudioPlayerStatus>({
@@ -55,17 +60,25 @@ const Vibes: React.FC = () => {
   const styles = StyleSheet.create({
     container: {
       flex: 1,
+      backgroundColor: '#1E1E1E',
+    },
+    imageContainer: {
+      flex: 1,
       position: 'relative',
       alignItems: 'center',
       backgroundColor: '#1E1E1E',
     },
-    imageContainer: {
-      ...StyleSheet.absoluteFillObject,
+    imageWrapper: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
     },
     image: {
-      width: 200,
-      height: 200,
-      transition: 'opacity 0.5s ease-in-out',
+      width: '100%',
+      height: '100%',
+      position: 'absolute',
     },
     debugContainer: {
       position: 'absolute',
@@ -170,16 +183,70 @@ const Vibes: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchImages();
+    const fetchAndLogImages = async () => {
+      await fetchImages();
+      console.log('Fetched images:', images); // Debug log
+    };
+    fetchAndLogImages();
+  }, []);
 
-    const interval = setInterval(() => {
-      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % images.length);
-    }, 5000);
+  const preloadImage = async (uri: string): Promise<boolean> => {
+    return Image.prefetch(uri);
+  };
+
+  // Updated cycling effect
+  useEffect(() => {
+    if (!images || images.length === 0) return;
+
+    const cycleImage = async () => {
+      const nextIndex = (currentImageIndex + 1) % images.length;
+      console.log('Cycling to image index:', nextIndex); // Debug log
+
+      try {
+        // Preload next image
+        const success = await preloadImage(images[nextIndex].src);
+        console.log('Preload success:', success); // Debug log
+
+        // Fade out current image
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }).start();
+
+        // Set next image
+        setNextImage(images[nextIndex].src);
+
+        // After fade out, update current image and fade back in
+        setTimeout(() => {
+          setCurrentImage(images[nextIndex].src);
+          setCurrentImageIndex(nextIndex);
+
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }).start();
+        }, 1000);
+      } catch (error) {
+        console.error('Failed to load next image:', error);
+      }
+    };
+
+    // Set initial image
+    if (!currentImage && images[0]) {
+      console.log('Setting initial image'); // Debug log
+      setCurrentImage(images[0].src);
+    }
+
+    const intervalId = setInterval(cycleImage, 5000);
+    console.log('Interval set'); // Debug log
 
     return () => {
-      clearInterval(interval);
+      console.log('Cleaning up interval'); // Debug log
+      clearInterval(intervalId);
     };
-  }, [images]);
+  }, [images, currentImageIndex]);
 
   const fetchImages = async () => {
     const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
@@ -401,106 +468,122 @@ const Vibes: React.FC = () => {
     return 'volume-medium';
   };
 
-  // Ensure currentImageIndex is always valid
-  useEffect(() => {
-    if (images.length > 0) {
-      setCurrentImageIndex((prevIndex) => Math.min(prevIndex, images.length - 1));
-    } else {
-      setCurrentImageIndex(0);
-    }
-  }, [images.length]);
-
   return (
-    <View style={styles.container}>
-      {images.length > 0 && images[currentImageIndex] && (
-        <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: images[currentImageIndex].src }}
-            style={styles.image}
-            resizeMode="cover"
-            onError={(error) => console.error('Image load error:', error.nativeEvent.error)}
-            defaultSource={{ uri: '../assets/screenshot-vibes-home-page.png' }}
-          />
-        </View>
-      )}
-      <View style={styles.debugContainer}>
-        <Text style={styles.debugText}>Status: {status.isLoaded ? 'Loaded' : 'Not loaded'}</Text>
-        <Text style={styles.debugText}>{status.isBuffering ? 'Buffering...' : ''}</Text>
-        {status.error && (
-          <Text style={[styles.debugText, styles.errorText]}>Error: {status.error}</Text>
-        )}
-      </View>
-
-      <View style={styles.controlsContainer}>
-        <View style={styles.progressContainer}>
-          <Text style={styles.timeText}>{formatTime(position)}</Text>
-          <Slider
-            style={styles.progressSlider}
-            value={isNaN(position) ? 0 : position}
-            minimumValue={0}
-            maximumValue={isNaN(duration) ? 0 : duration}
-            minimumTrackTintColor="#FFFFFF"
-            maximumTrackTintColor="#666666"
-            thumbTintColor="#FFFFFF"
-            onSlidingComplete={async (value) => {
-              if (sound) {
-                await sound.setPositionAsync(value);
-              }
-            }}
-          />
-          <Text style={styles.timeText}>{formatTime(duration)}</Text>
-        </View>
-
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            onPress={handlePlayPause}
-            style={styles.controlButton}
-            activeOpacity={0.7}
-            disabled={!status.isLoaded}
-            testID="play-button">
-            <Ionicons
-              name={status.isPlaying ? 'pause-circle' : 'play-circle'}
-              size={60}
-              color={status.isLoaded ? 'white' : '#666666'}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleStop}
-            style={styles.controlButton}
-            activeOpacity={0.7}
-            disabled={!status.isLoaded}
-            testID="stop-button">
-            <Ionicons name="stop-circle" size={60} color={status.isLoaded ? 'white' : '#666666'} />
-          </TouchableOpacity>
-        </View>
-        {offlineState.isOffline && (
-          <View style={styles.offlineIndicator}>
-            <Text style={styles.offlineText}>Offline Mode</Text>
+    <>
+      <Stack.Screen options={{ title: 'Home' }} />
+      <Container>
+        {images.length > 0 && (
+          <View style={styles.imageContainer}>
+            <Animated.View
+              style={[
+                styles.imageWrapper,
+                {
+                  opacity: fadeAnim,
+                  zIndex: 2, // Add this
+                },
+              ]}>
+              <Image
+                source={{ uri: currentImage }}
+                style={styles.image}
+                resizeMode="cover"
+                onError={(error) => console.error('Image load error:', error.nativeEvent.error)}
+              />
+            </Animated.View>
+            <View style={[styles.imageWrapper, { zIndex: 1 }]}>
+              {' '}
+              {/* Add zIndex */}
+              <Image
+                source={{ uri: nextImage }}
+                style={styles.image}
+                resizeMode="cover"
+                onError={(error) => console.error('Image load error:', error.nativeEvent.error)}
+              />
+            </View>
           </View>
         )}
-        {/* Volume Control with Icon */}
-        <View style={styles.volumeContainer}>
-          <Ionicons
-            testID={`volume-icon-${getVolumeIcon()}`}
-            name={getVolumeIcon()}
-            size={24}
-            color="white"
-          />
-          <Text style={styles.volumeLabel}>Volume: {Math.round(volume * 100)}%</Text>
-          <Slider
-            style={styles.volumeSlider}
-            value={volume}
-            minimumValue={0}
-            maximumValue={1}
-            minimumTrackTintColor="#FFFFFF"
-            maximumTrackTintColor="#666666"
-            thumbTintColor="#FFFFFF"
-            onValueChange={handleVolumeChange}
-            testID="volume-slider"
-          />
+        <View style={styles.debugContainer}>
+          <Text style={styles.debugText}>Status: {status.isLoaded ? 'Loaded' : 'Not loaded'}</Text>
+          <Text style={styles.debugText}>{status.isBuffering ? 'Buffering...' : ''}</Text>
+          {status.error && (
+            <Text style={[styles.debugText, styles.errorText]}>Error: {status.error}</Text>
+          )}
         </View>
-      </View>
-    </View>
+
+        <View style={styles.controlsContainer}>
+          <View style={styles.progressContainer}>
+            <Text style={styles.timeText}>{formatTime(position)}</Text>
+            <Slider
+              style={styles.progressSlider}
+              value={isNaN(position) ? 0 : position}
+              minimumValue={0}
+              maximumValue={isNaN(duration) ? 0 : duration}
+              minimumTrackTintColor="#FFFFFF"
+              maximumTrackTintColor="#666666"
+              thumbTintColor="#FFFFFF"
+              onSlidingComplete={async (value) => {
+                if (sound) {
+                  await sound.setPositionAsync(value);
+                }
+              }}
+            />
+            <Text style={styles.timeText}>{formatTime(duration)}</Text>
+          </View>
+
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              onPress={handlePlayPause}
+              style={styles.controlButton}
+              activeOpacity={0.7}
+              disabled={!status.isLoaded}
+              testID="play-button">
+              <Ionicons
+                name={status.isPlaying ? 'pause-circle' : 'play-circle'}
+                size={60}
+                color={status.isLoaded ? 'white' : '#666666'}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleStop}
+              style={styles.controlButton}
+              activeOpacity={0.7}
+              disabled={!status.isLoaded}
+              testID="stop-button">
+              <Ionicons
+                name="stop-circle"
+                size={60}
+                color={status.isLoaded ? 'white' : '#666666'}
+              />
+            </TouchableOpacity>
+          </View>
+          {offlineState.isOffline && (
+            <View style={styles.offlineIndicator}>
+              <Text style={styles.offlineText}>Offline Mode</Text>
+            </View>
+          )}
+          {/* Volume Control with Icon */}
+          <View style={styles.volumeContainer}>
+            <Ionicons
+              testID={`volume-icon-${getVolumeIcon()}`}
+              name={getVolumeIcon()}
+              size={24}
+              color="white"
+            />
+            <Text style={styles.volumeLabel}>Volume: {Math.round(volume * 100)}%</Text>
+            <Slider
+              style={styles.volumeSlider}
+              value={volume}
+              minimumValue={0}
+              maximumValue={1}
+              minimumTrackTintColor="#FFFFFF"
+              maximumTrackTintColor="#666666"
+              thumbTintColor="#FFFFFF"
+              onValueChange={handleVolumeChange}
+              testID="volume-slider"
+            />
+          </View>
+        </View>
+      </Container>
+    </>
   );
 };
 
