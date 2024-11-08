@@ -1,16 +1,26 @@
-import { Stack } from 'expo-router';
-import { Container } from '~/components/Container';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Text,
+  Alert,
+  Image,
+  Animated,
+  ViewStyle,
+} from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 import { Ionicons } from '@expo/vector-icons';
-import Slider from '@react-native-community/slider';
+import { CacheService } from '../utils/cacheService';
 import axios from 'axios';
 import { Audio, AVPlaybackStatus } from 'expo-av';
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Alert, Image, Animated } from 'react-native';
-import NetInfo from '@react-native-community/netinfo';
-import { CacheService } from '../utils/cacheService';
+import { Container } from '~/components/Container';
+import Slider from '@react-native-community/slider';
+
+let fadeAnim = new Animated.Value(1);
 
 const consoleError = console.error;
-console.error = (...args: any[]) => {
+console.error = (...args) => {
   if (args[0] && args[0].includes && args[0].includes('findDOMNode')) {
     return;
   }
@@ -28,6 +38,7 @@ interface AudioPlayerStatus {
   isBuffering: boolean;
   error?: string;
 }
+
 interface OfflineState {
   isOffline: boolean;
   cachedImages: { [key: string]: string };
@@ -46,14 +57,12 @@ const Vibes: React.FC = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
   const [currentImage, setCurrentImage] = useState<string>('');
   const [nextImage, setNextImage] = useState<string>('');
-  const fadeAnim = useState(new Animated.Value(1))[0];
   const [loadingState, setLoadingState] = useState<LoadingState>({
     isInitializing: true,
     isLoading: false,
     retryCount: 0,
     error: null,
   });
-
   const [sound, setSound] = useState<Audio.Sound>();
   const [status, setStatus] = useState<AudioPlayerStatus>({
     isLoaded: false,
@@ -63,7 +72,6 @@ const Vibes: React.FC = () => {
   const [position, setPosition] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
   const [volume, setVolume] = useState<number>(1.0);
-
   const [offlineState, setOfflineState] = useState<OfflineState>({
     isOffline: false,
     cachedImages: {},
@@ -181,14 +189,43 @@ const Vibes: React.FC = () => {
     },
   });
 
-  const loadingStyles = {
+  // const loadingStyles = {
+  //   loadingContainer: {
+  //     ...StyleSheet.absoluteFillObject,
+  //     backgroundColor: '#1E1E1E',
+  //     justifyContent: 'center',
+  //     alignItems: 'center',
+  //     zIndex: 1000,
+  //   },
+  //   loadingText: {
+  //     color: 'white',
+  //     fontSize: 18,
+  //     marginTop: 10,
+  //   },
+  //   retryButton: {
+  //     backgroundColor: '#4A90E2',
+  //     padding: 10,
+  //     borderRadius: 5,
+  //     marginTop: 15,
+  //   },
+  //   retryButtonText: {
+  //     color: 'white',
+  //     fontSize: 16,
+  //   },
+  // };
+
+  const loadingStyles = StyleSheet.create({
     loadingContainer: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: '#1E1E1E',
+      backgroundColor: 'white',
       justifyContent: 'center',
       alignItems: 'center',
-      zIndex: 1000,
-    },
+      zIndex: 1,
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+    } as ViewStyle,
     loadingText: {
       color: 'white',
       fontSize: 18,
@@ -204,20 +241,7 @@ const Vibes: React.FC = () => {
       color: 'white',
       fontSize: 16,
     },
-  };
-
-  useEffect(() => {
-    console.log('Component mounted');
-    return () => console.log('Component unmounted');
-  }, []);
-
-  useEffect(() => {
-    console.log('Images state changed:', images.length);
-  }, [images]);
-
-  useEffect(() => {
-    console.log('Sound status changed:', status);
-  }, [status]);
+  });
 
   useEffect(() => {
     const checkConnectivity = async () => {
@@ -236,7 +260,6 @@ const Vibes: React.FC = () => {
   useEffect(() => {
     const fetchAndLogImages = async () => {
       await fetchImages();
-      console.log('Fetched images:', images); // Debug log
     };
     fetchAndLogImages();
   }, []);
@@ -278,12 +301,10 @@ const Vibes: React.FC = () => {
     }));
   }, []);
 
-  // Updated cycling effect
   useEffect(() => {
     if (!images || images.length === 0) return;
     if (!images[currentImageIndex]) return;
 
-    //   console.log('Cycling to image index:', nextIndex); // Debug log
     const cycleImage = async () => {
       const nextIndex = (currentImageIndex + 1) % images.length;
       if (nextIndex === currentImageIndex) return;
@@ -291,7 +312,6 @@ const Vibes: React.FC = () => {
       try {
         // Preload next image
         const success = await preloadImage(images[nextIndex].src);
-        console.log('Preload success:', success); // Debug log
 
         // Fade out current image
         Animated.timing(fadeAnim, {
@@ -321,22 +341,20 @@ const Vibes: React.FC = () => {
 
     // Set initial image
     if (!currentImage && images[0]) {
-      console.log('Setting initial image'); // Debug log
       setCurrentImage(images[0].src);
     }
 
     const intervalId = setInterval(cycleImage, 30000);
-    console.log('Interval set'); // Debug log
 
     return () => {
-      console.log('Cleaning up interval'); // Debug log
       clearInterval(intervalId);
     };
   }, [images, currentImageIndex]);
 
   // Modify the fetchImages function
   const fetchImages = async () => {
-    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://vibes-api-space-f970ef69ea72.herokuapp.com';
+    const apiUrl =
+      process.env.EXPO_PUBLIC_API_URL || 'https://vibes-api-space-f970ef69ea72.herokuapp.com';
     try {
       if (offlineState.isOffline) {
         const cachedImagesUrls = Object.keys(offlineState.cachedImages);
@@ -381,8 +399,6 @@ const Vibes: React.FC = () => {
 
   const loadSound = useCallback(async () => {
     try {
-      console.log('Starting audio load process');
-
       if (sound) {
         await sound.unloadAsync();
       }
@@ -447,41 +463,35 @@ const Vibes: React.FC = () => {
 
   useEffect(() => {
     const initSound = async () => {
-      console.log('Sound loading effect triggered');
       await loadSound();
     };
 
     initSound();
 
     return () => {
-      console.log('Cleaning up sound');
       if (sound) {
         sound.unloadAsync();
       }
+      CacheService.clearOldCache;
     };
   }, []);
 
   const handlePlayPause = useCallback(async () => {
     try {
       if (!sound) {
-        console.log('No sound object available');
         return;
       }
 
       const playbackStatus = await sound.getStatusAsync();
-      console.log('Current playback status:', playbackStatus);
 
       if (!playbackStatus.isLoaded) {
-        console.log('Sound not loaded, attempting to reload');
         await loadSound();
         return;
       }
 
       if (playbackStatus.isPlaying) {
-        console.log('Pausing sound');
         await sound.pauseAsync();
       } else {
-        console.log('Playing sound');
         await sound.playAsync();
       }
     } catch (error) {
@@ -566,7 +576,6 @@ const Vibes: React.FC = () => {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Home' }} />
       <Container>
         {loadingState.isInitializing && (
           <View style={loadingStyles.loadingContainer}>
@@ -593,25 +602,21 @@ const Vibes: React.FC = () => {
                 styles.imageWrapper,
                 {
                   opacity: fadeAnim,
-                  zIndex: 2, // Add this
+                  zIndex: 2,
                 },
               ]}>
               <Image
                 source={{ uri: currentImage }}
                 style={styles.image}
                 resizeMode="cover"
-                defaultSource={{ uri: '../assets/screenshot-vibes-home-page.png' }}
                 onError={(error) => console.error('Image load error:', error.nativeEvent.error)}
               />
             </Animated.View>
             <View style={[styles.imageWrapper, { zIndex: 1 }]}>
-              {' '}
-              {/* Add zIndex */}
               <Image
                 source={{ uri: nextImage }}
                 style={styles.image}
                 resizeMode="cover"
-                defaultSource={{ uri: '../assets/screenshot-vibes-home-page.png' }}
                 onError={(error) => console.error('Image load error:', error.nativeEvent.error)}
               />
             </View>
