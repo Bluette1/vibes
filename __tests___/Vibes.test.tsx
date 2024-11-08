@@ -4,10 +4,8 @@ import { Audio } from 'expo-av';
 import React from 'react';
 import { Alert } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppState, BackHandler } from 'react-native';
 
-import Vibes from '../app/index';
+import Vibes from '../app/vibes/index';
 
 // Mock dependencies
 jest.mock('axios');
