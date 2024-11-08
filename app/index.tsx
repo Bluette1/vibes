@@ -95,69 +95,76 @@ const Vibes: React.FC = () => {
       left: 0,
       right: 0,
       bottom: 0,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     image: {
       width: '100%',
       height: '100%',
       position: 'absolute',
-    },
-    debugContainer: {
-      position: 'absolute',
-      top: 50,
-      left: 20,
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
-      padding: 10,
-      borderRadius: 5,
+      maxWidth: '96%',
+      maxHeight: '90%',
+      aspectRatio: 4 / 3,
+      alignSelf: 'center',
     },
     debugText: {
       color: 'white',
-      marginVertical: 2,
+      marginVertical: '1%',
+      fontSize: 14,
     },
     errorText: {
       color: '#ff4444',
     },
     controlsContainer: {
       position: 'absolute',
-      bottom: 50,
-      width: '100%',
+      bottom: '5%',
+      width: '90%',
+      alignSelf: 'center',
       alignItems: 'center',
       backgroundColor: 'rgba(0, 0, 0, 0.7)',
-      padding: 20,
+      padding: '4%',
+      margin: '4%',
       borderRadius: 10,
+      maxWidth: 600, // Prevent controls from getting too wide on large screens
     },
     progressContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      width: '90%',
-      marginBottom: 20,
+      width: '100%',
+      marginBottom: '4%',
     },
     progressSlider: {
-      width: '90%',
-      marginHorizontal: 10,
+      flex: 1,
+      marginHorizontal: '2%',
     },
     timeText: {
       color: 'white',
       fontSize: 12,
-      width: 45,
+      minWidth: 45,
       textAlign: 'center',
     },
     buttonContainer: {
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 20,
+      marginBottom: '4%',
+      width: '100%',
     },
     controlButton: {
-      marginHorizontal: 10,
+      marginHorizontal: '3%',
+      padding: '2%',
     },
     volumeContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      width: '80%',
+      width: '100%',
+      maxWidth: 500,
     },
     volumeLabel: {
       color: 'white',
-      marginRight: 10,
+      marginRight: '2%',
+      fontSize: 14,
+      minWidth: 80,
     },
     volumeSlider: {
       flex: 1,
@@ -165,15 +172,16 @@ const Vibes: React.FC = () => {
     },
     offlineIndicator: {
       position: 'absolute',
-      top: 40,
-      right: 20,
+      top: '2%',
+      right: '2%',
       backgroundColor: 'rgba(255, 215, 0, 0.8)',
-      padding: 8,
+      padding: '2%',
       borderRadius: 5,
     },
     offlineText: {
       color: '#000',
       fontWeight: 'bold',
+      fontSize: 14,
     },
     imagePlaceholder: {
       width: '100%',
@@ -189,34 +197,9 @@ const Vibes: React.FC = () => {
     },
   });
 
-  // const loadingStyles = {
-  //   loadingContainer: {
-  //     ...StyleSheet.absoluteFillObject,
-  //     backgroundColor: '#1E1E1E',
-  //     justifyContent: 'center',
-  //     alignItems: 'center',
-  //     zIndex: 1000,
-  //   },
-  //   loadingText: {
-  //     color: 'white',
-  //     fontSize: 18,
-  //     marginTop: 10,
-  //   },
-  //   retryButton: {
-  //     backgroundColor: '#4A90E2',
-  //     padding: 10,
-  //     borderRadius: 5,
-  //     marginTop: 15,
-  //   },
-  //   retryButtonText: {
-  //     color: 'white',
-  //     fontSize: 16,
-  //   },
-  // };
-
   const loadingStyles = StyleSheet.create({
     loadingContainer: {
-      backgroundColor: 'white',
+      backgroundColor: 'rgba(30, 30, 30, 0.9)',
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 1,
@@ -229,13 +212,16 @@ const Vibes: React.FC = () => {
     loadingText: {
       color: 'white',
       fontSize: 18,
-      marginTop: 10,
+      marginTop: '3%',
+      textAlign: 'center',
+      paddingHorizontal: '5%',
     },
     retryButton: {
       backgroundColor: '#4A90E2',
-      padding: 10,
+      paddingVertical: '3%',
+      paddingHorizontal: '6%',
       borderRadius: 5,
-      marginTop: 15,
+      marginTop: '4%',
     },
     retryButtonText: {
       color: 'white',
@@ -310,7 +296,7 @@ const Vibes: React.FC = () => {
 
       try {
         // Preload next image
-        const success = await preloadImage(images[nextIndex].src);
+        await preloadImage(images[nextIndex].src);
 
         // Fade out current image
         Animated.timing(fadeAnim, {
@@ -352,8 +338,7 @@ const Vibes: React.FC = () => {
 
   // Modify the fetchImages function
   const fetchImages = async () => {
-    const apiUrl =
-      process.env.EXPO_PUBLIC_API_URL || 'https://vibes-api-space-f970ef69ea72.herokuapp.com';
+    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
     try {
       if (offlineState.isOffline) {
         const cachedImagesUrls = Object.keys(offlineState.cachedImages);
@@ -621,13 +606,13 @@ const Vibes: React.FC = () => {
             </View>
           </View>
         )}
-        <View style={styles.debugContainer}>
+        {/* <View style={styles.debugContainer}>
           <Text style={styles.debugText}>Status: {status.isLoaded ? 'Loaded' : 'Not loaded'}</Text>
           <Text style={styles.debugText}>{status.isBuffering ? 'Buffering...' : ''}</Text>
           {status.error && (
             <Text style={[styles.debugText, styles.errorText]}>Error: {status.error}</Text>
           )}
-        </View>
+        </View> */}
 
         <View style={styles.controlsContainer}>
           <View style={styles.progressContainer}>
