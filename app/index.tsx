@@ -268,7 +268,6 @@ const Vibes: React.FC = () => {
     return Image.prefetch(uri);
   };
 
-  // Modify the initialization logic in useEffect
   useEffect(() => {
     const initializeApp = async () => {
       setLoadingState((prev) => ({ ...prev, isLoading: true, error: null }));
