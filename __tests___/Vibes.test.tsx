@@ -4,8 +4,7 @@ import { Audio } from 'expo-av';
 import React from 'react';
 import { Alert } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppState, BackHandler } from 'react-native';
+
 
 import Vibes from '../app/index';
 
@@ -85,7 +84,7 @@ describe('Vibes Component', () => {
     const { getByTestId } = render(<Vibes />);
     await act(async () => {
       await waitFor(() => {
-        expect(axios.get).toHaveBeenCalledWith('http://localhost:3000/api/images');
+        expect(axios.get).toHaveBeenCalledWith('https://vibes-api-space-f970ef69ea72.herokuapp.com/api/images');
       });
     });
   });
