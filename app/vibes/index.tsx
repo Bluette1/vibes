@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { Ionicons } from '@expo/vector-icons';
-import { CacheService } from '../utils/cacheService';
+import { CacheService } from '../../utils/cacheService';
 import axios from 'axios';
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import { Container } from '~/components/Container';
@@ -400,7 +400,7 @@ const Vibes: React.FC = () => {
       if (offlineState.isOffline && offlineState.cachedAudio) {
         audioSource = { uri: offlineState.cachedAudio };
       } else {
-        audioSource = require('../assets/focused.mp3');
+        audioSource = require('../../assets/focused.mp3');
         // Cache the audio file if online
         if (!offlineState.isOffline) {
           try {

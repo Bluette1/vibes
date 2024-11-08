@@ -6,7 +6,7 @@ import { Alert } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 
 
-import Vibes from '../app/index';
+import Vibes from '../app/vibes/index';
 
 // Mock dependencies
 jest.mock('axios');
