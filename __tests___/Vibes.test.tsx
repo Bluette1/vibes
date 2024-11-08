@@ -84,7 +84,7 @@ describe('Vibes Component', () => {
     const { getByTestId } = render(<Vibes />);
     await act(async () => {
       await waitFor(() => {
-        expect(axios.get).toHaveBeenCalledWith('https://vibes-api-space-f970ef69ea72.herokuapp.com/api/images');
+        expect(axios.get).toHaveBeenCalledWith('http://localhost:3000/api/images');
       });
     });
   });
