@@ -5,7 +5,6 @@ import React from 'react';
 import { Alert } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 
-
 import Vibes from '../app/vibes/index';
 
 // Mock dependencies
