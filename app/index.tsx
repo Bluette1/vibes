@@ -81,13 +81,13 @@ const Vibes: React.FC = () => {
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: '#1E1E1E',
+      margin: 0,
+      padding: 0,
     },
     imageContainer: {
       flex: 1,
       position: 'relative',
       alignItems: 'center',
-      backgroundColor: '#1E1E1E',
     },
     imageWrapper: {
       position: 'absolute',
@@ -104,8 +104,8 @@ const Vibes: React.FC = () => {
       position: 'absolute',
       maxWidth: '96%',
       maxHeight: '90%',
-      aspectRatio: 4 / 3,
       alignSelf: 'center',
+      borderRadius: 8,
     },
     debugText: {
       color: 'white',
@@ -125,7 +125,7 @@ const Vibes: React.FC = () => {
       padding: '4%',
       margin: '4%',
       borderRadius: 10,
-      maxWidth: 600, // Prevent controls from getting too wide on large screens
+      maxWidth: 600,
     },
     progressContainer: {
       flexDirection: 'row',
@@ -190,6 +190,9 @@ const Vibes: React.FC = () => {
       backgroundColor: '#1E1E1E',
       justifyContent: 'center',
       alignItems: 'center',
+      borderRadius: 8,
+      margin: 0,
+      padding: 0,
     },
     placeholderText: {
       color: 'white',
@@ -229,7 +232,7 @@ const Vibes: React.FC = () => {
     },
   });
 
-  const formatUrl = (image: string)=>image.split('?')[0]
+  const formatUrl = (image: string) => image.split('?')[0];
 
   useEffect(() => {
     const checkConnectivity = async () => {
@@ -340,7 +343,8 @@ const Vibes: React.FC = () => {
 
   // Modify the fetchImages function
   const fetchImages = async () => {
-    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+    const apiUrl =
+      process.env.EXPO_PUBLIC_API_URL || 'https://vibes-api-space-f970ef69ea72.herokuapp.com';
     try {
       if (offlineState.isOffline) {
         const cachedImagesUrls = Object.keys(offlineState.cachedImages);
