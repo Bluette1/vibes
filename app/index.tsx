@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { Ionicons } from '@expo/vector-icons';
-import { CacheService } from '../../utils/cacheService';
+import { CacheService } from '../utils/cacheService';
 import axios from 'axios';
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import { Container } from '~/components/Container';
@@ -229,6 +229,8 @@ const Vibes: React.FC = () => {
     },
   });
 
+  const formatUrl = (image: string)=>image.split('?')[0]
+
   useEffect(() => {
     const checkConnectivity = async () => {
       const netInfo = await NetInfo.fetch();
@@ -296,7 +298,7 @@ const Vibes: React.FC = () => {
 
       try {
         // Preload next image
-        await preloadImage(images[nextIndex].src);
+        await preloadImage(formatUrl(images[nextIndex].src));
 
         // Fade out current image
         Animated.timing(fadeAnim, {
@@ -310,7 +312,7 @@ const Vibes: React.FC = () => {
 
         // After fade out, update current image and fade back in
         setTimeout(() => {
-          setCurrentImage(images[nextIndex].src);
+          setCurrentImage(formatUrl(images[nextIndex].src));
           setCurrentImageIndex(nextIndex);
 
           Animated.timing(fadeAnim, {
@@ -326,7 +328,7 @@ const Vibes: React.FC = () => {
 
     // Set initial image
     if (!currentImage && images[0]) {
-      setCurrentImage(images[0].src);
+      setCurrentImage(formatUrl(images[0].src));
     }
 
     const intervalId = setInterval(cycleImage, 30000);
@@ -400,7 +402,7 @@ const Vibes: React.FC = () => {
       if (offlineState.isOffline && offlineState.cachedAudio) {
         audioSource = { uri: offlineState.cachedAudio };
       } else {
-        audioSource = require('../../assets/focused.mp3');
+        audioSource = require('../assets/focused.mp3');
         // Cache the audio file if online
         if (!offlineState.isOffline) {
           try {

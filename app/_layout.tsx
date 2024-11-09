@@ -19,7 +19,7 @@ export default function Layout() {
   return (
     <Stack>
       <Stack.Screen
-        name="vibes/index"
+        name="index"
         options={{
           headerTitle: () => <CustomHeaderTitle />,
           headerStyle: { backgroundColor: '#f8f8f8' },
