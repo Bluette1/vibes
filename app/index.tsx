@@ -117,7 +117,7 @@ const Vibes: React.FC = () => {
     },
     controlsContainer: {
       position: 'absolute',
-      bottom: '5%',
+      bottom: '10%',
       width: '90%',
       alignSelf: 'center',
       alignItems: 'center',
@@ -126,6 +126,7 @@ const Vibes: React.FC = () => {
       margin: '4%',
       borderRadius: 10,
       maxWidth: 600,
+      zIndex: 2,
     },
     progressContainer: {
       flexDirection: 'row',
@@ -182,21 +183,6 @@ const Vibes: React.FC = () => {
       color: '#000',
       fontWeight: 'bold',
       fontSize: 14,
-    },
-    imagePlaceholder: {
-      width: '100%',
-      height: '100%',
-      position: 'absolute',
-      backgroundColor: '#1E1E1E',
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderRadius: 8,
-      margin: 0,
-      padding: 0,
-    },
-    placeholderText: {
-      color: 'white',
-      fontSize: 16,
     },
   });
 
@@ -612,13 +598,6 @@ const Vibes: React.FC = () => {
             </View>
           </View>
         )}
-        {/* <View style={styles.debugContainer}>
-          <Text style={styles.debugText}>Status: {status.isLoaded ? 'Loaded' : 'Not loaded'}</Text>
-          <Text style={styles.debugText}>{status.isBuffering ? 'Buffering...' : ''}</Text>
-          {status.error && (
-            <Text style={[styles.debugText, styles.errorText]}>Error: {status.error}</Text>
-          )}
-        </View> */}
 
         <View style={styles.controlsContainer}>
           <View style={styles.progressContainer}>
