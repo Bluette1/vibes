@@ -20,14 +20,6 @@ import { useAuth } from '~/contexts/AuthContext';
 
 let fadeAnim = new Animated.Value(1);
 
-const consoleError = console.error;
-console.error = (...args) => {
-  if (args[0] && args[0].includes && args[0].includes('findDOMNode')) {
-    return;
-  }
-  consoleError(...args);
-};
-
 interface ImageResponse {
   src: string;
   alt: string;
@@ -354,8 +346,7 @@ const Vibes: React.FC = () => {
 
   // Modify the fetchImages function
   const fetchImages = async () => {
-    const apiUrl =
-      process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
     try {
       if (offlineState.isOffline) {
         const cachedImagesUrls = Object.keys(offlineState.cachedImages);
@@ -593,7 +584,7 @@ const Vibes: React.FC = () => {
           </TouchableOpacity>
         )}
         {loadingState.isInitializing && (
-          <View style={loadingStyles.loadingContainer}>
+          <View style={loadingStyles.loadingContainer} testID="loading-indicator">
             <Ionicons name="reload-circle" size={50} color="white" />
             <Text style={loadingStyles.loadingText}>
               {loadingState.isLoading ? 'Loading...' : 'Initializing...'}

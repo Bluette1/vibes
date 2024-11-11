@@ -92,6 +92,16 @@ describe('Vibes Component', () => {
     });
   });
 
+  it('shows loading state while initializing', async () => {
+    const { getByTestId } = render(<MockedVibesWithAuth />);
+
+    expect(getByTestId('loading-indicator')).toBeTruthy();
+
+    await waitFor(() => {
+      expect(Audio.Sound.createAsync).toHaveBeenCalled();
+    });
+  });
+
   it('fetches and displays images on mount', async () => {
     render(<MockedVibesWithAuth />);
     await act(async () => {
@@ -192,7 +202,6 @@ describe('Vibes Component', () => {
   });
 
   it('handles errors appropriately', async () => {
-    // Mock error in audio loading
     const error = new Error('Audio loading failed');
     (Audio.Sound.createAsync as jest.Mock).mockRejectedValue(error);
 
@@ -294,7 +303,7 @@ describe('Vibes Component', () => {
     });
 
     // Render component with mocked auth context
-    const { getByTestId, getByText } = render (<MockedVibesWithAuth/>);
+    const { getByTestId, getByText } = render(<MockedVibesWithAuth />);
 
     // Verify offline indicator is present
     await waitFor(() => {
