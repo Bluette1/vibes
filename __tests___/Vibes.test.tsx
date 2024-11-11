@@ -4,8 +4,10 @@ import { Audio } from 'expo-av';
 import React from 'react';
 import { Alert } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
+import { CacheService } from '../utils/cacheService';
+import { AuthContext } from '../contexts/AuthContext';
 
-import Vibes from '../app/index';
+import Vibes from '../components/Vibes';
 
 // Mock dependencies
 jest.mock('axios');
@@ -33,11 +35,41 @@ jest.mock('../utils/cacheService', () => ({
   },
 }));
 
-// Then import CacheService
-import { CacheService } from '../utils/cacheService';
-
 // Mock Alert
 jest.spyOn(Alert, 'alert');
+
+const MockedVibesWithAuth: React.FC = () => {
+  return (
+    <AuthContext.Provider
+      value={{
+        isAuthenticated: false,
+        isGuest: true,
+        token: null,
+        login: async () => {},
+        logout: async () => {},
+        continueAsGuest: () => {},
+      }}>
+      <Vibes />
+    </AuthContext.Provider>
+  );
+};
+
+// Mock data
+const mockImages = [
+  { src: 'http://example.com/image1.jpg', alt: 'Image 1' },
+  { src: 'http://example.com/image2.jpg', alt: 'Image 2' },
+];
+
+// Mock sound object
+const mockSound = {
+  playAsync: jest.fn(),
+  pauseAsync: jest.fn(),
+  stopAsync: jest.fn(),
+  unloadAsync: jest.fn(),
+  setPositionAsync: jest.fn(),
+  setVolumeAsync: jest.fn(),
+  getStatusAsync: jest.fn(),
+};
 
 describe('Vibes Component', () => {
   beforeEach(() => {
@@ -49,26 +81,7 @@ describe('Vibes Component', () => {
       isInternetReachable: true,
       type: 'wifi',
     }));
-  });
-  // Mock data
-  const mockImages = [
-    { src: 'http://example.com/image1.jpg', alt: 'Image 1' },
-    { src: 'http://example.com/image2.jpg', alt: 'Image 2' },
-  ];
 
-  // Mock sound object
-  const mockSound = {
-    playAsync: jest.fn(),
-    pauseAsync: jest.fn(),
-    stopAsync: jest.fn(),
-    unloadAsync: jest.fn(),
-    setPositionAsync: jest.fn(),
-    setVolumeAsync: jest.fn(),
-    getStatusAsync: jest.fn(),
-  };
-
-  beforeEach(() => {
-    jest.clearAllMocks();
     // Mock axios get request
     (axios.get as jest.Mock).mockResolvedValue({ data: mockImages });
 
@@ -80,7 +93,7 @@ describe('Vibes Component', () => {
   });
 
   it('fetches and displays images on mount', async () => {
-    const { getByTestId } = render(<Vibes />);
+    render(<MockedVibesWithAuth />);
     await act(async () => {
       await waitFor(() => {
         expect(axios.get).toHaveBeenCalledWith('http://localhost:3000/api/images');
@@ -88,18 +101,26 @@ describe('Vibes Component', () => {
     });
   });
 
-  it('loads audio on mount', async () => {
-    render(<Vibes />);
+  it('loads correct audio file on mount', async () => {
+    render(<MockedVibesWithAuth />);
 
     await act(async () => {
       await waitFor(() => {
-        expect(Audio.Sound.createAsync).toHaveBeenCalled();
+        const actualCall = Audio.Sound.createAsync.mock.calls[0];
+        expect(actualCall[0]).toBe(require('../assets/focused.mp3')); // Explicit file comparison
+        expect(actualCall[1]).toEqual({
+          isLooping: true,
+          progressUpdateIntervalMillis: 100,
+          shouldPlay: false,
+          volume: 1,
+        });
+        expect(actualCall[2]).toEqual(expect.any(Function));
       });
     });
   });
 
   it('handles play/pause correctly', async () => {
-    const { getByTestId } = render(<Vibes />);
+    const { getByTestId } = render(<MockedVibesWithAuth />);
 
     // Mock sound status
     mockSound.getStatusAsync.mockResolvedValue({
@@ -138,7 +159,7 @@ describe('Vibes Component', () => {
   });
 
   it('handles stop correctly', async () => {
-    const { getByTestId } = render(<Vibes />);
+    const { getByTestId } = render(<MockedVibesWithAuth />);
 
     // Wait for initial load
     await waitFor(() => {
@@ -155,7 +176,7 @@ describe('Vibes Component', () => {
   });
 
   it('handles volume change correctly', async () => {
-    const { getByTestId } = render(<Vibes />);
+    const { getByTestId } = render(<MockedVibesWithAuth />);
 
     // Wait for initial load
     await waitFor(() => {
@@ -175,7 +196,7 @@ describe('Vibes Component', () => {
     const error = new Error('Audio loading failed');
     (Audio.Sound.createAsync as jest.Mock).mockRejectedValue(error);
 
-    render(<Vibes />);
+    render(<MockedVibesWithAuth />);
 
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalledWith('Error', 'Failed to load audio file');
@@ -183,7 +204,7 @@ describe('Vibes Component', () => {
   });
 
   it('formats time correctly', async () => {
-    const { getAllByText } = render(<Vibes />);
+    const { getAllByText } = render(<MockedVibesWithAuth />);
 
     // Wait for component to mount
     await waitFor(() => {
@@ -246,13 +267,6 @@ describe('Vibes Component', () => {
       return mockCachedImages[file] || mockCachedAudio;
     });
 
-    // Mock initial state with cached data
-    const initialOfflineState = {
-      isOffline: true,
-      cachedImages: mockCachedImages,
-      cachedAudio: mockCachedAudio,
-    };
-
     // Mock Audio.Sound.createAsync
     const mockSound = {
       playAsync: jest.fn(),
@@ -279,20 +293,16 @@ describe('Vibes Component', () => {
       },
     });
 
-    // Render component with React.useState mock for offlineState
-    const setOfflineStateMock = jest.fn();
-    jest
-      .spyOn(React, 'useState')
-      .mockImplementationOnce(() => [initialOfflineState, setOfflineStateMock]);
+    // Render component with mocked auth context
+    const { getByTestId, getByText } = render (<MockedVibesWithAuth/>);
 
-    const { getByTestId, getByText } = render(<Vibes />);
-
-    // Wait for offline indicator to appear
+    // Verify offline indicator is present
     await waitFor(() => {
+      const offlineIndicator = getByTestId('offline-indicator');
+      expect(offlineIndicator).toBeTruthy();
       expect(getByText('Offline Mode')).toBeTruthy();
     });
 
-    // Rest of the test remains the same...
     // Verify play functionality works with cached audio
     const playButton = getByTestId('play-button');
     fireEvent.press(playButton);

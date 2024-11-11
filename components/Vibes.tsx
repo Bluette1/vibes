@@ -89,7 +89,7 @@ const Vibes: React.FC = () => {
       backgroundColor: 'rgba(0, 0, 0, 0.7)',
       padding: 10,
       borderRadius: 5,
-      zIndex: 2
+      zIndex: 2,
     },
     loginPromptText: {
       color: 'white',
@@ -355,7 +355,7 @@ const Vibes: React.FC = () => {
   // Modify the fetchImages function
   const fetchImages = async () => {
     const apiUrl =
-      process.env.EXPO_PUBLIC_API_URL || 'https://vibes-api-space-f970ef69ea72.herokuapp.com';
+      process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
     try {
       if (offlineState.isOffline) {
         const cachedImagesUrls = Object.keys(offlineState.cachedImages);
@@ -685,7 +685,7 @@ const Vibes: React.FC = () => {
             </TouchableOpacity>
           </View>
           {offlineState.isOffline && (
-            <View style={styles.offlineIndicator}>
+            <View style={styles.offlineIndicator} testID="offline-indicator">
               <Text style={styles.offlineText}>Offline Mode</Text>
             </View>
           )}

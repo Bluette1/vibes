@@ -11,7 +11,18 @@ interface AuthContextType {
   continueAsGuest: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Export the context
+export const AuthContext = createContext<AuthContextType>({
+  isAuthenticated: false,
+  isGuest: false,
+  token: null,
+  login: async () => {},
+  logout: async () => {},
+  continueAsGuest: () => {},
+});
+
+// const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
