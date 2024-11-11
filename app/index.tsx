@@ -1,7 +1,8 @@
 // app/index.tsx
-import { AuthProvider, useAuth } from '../contexts/AuthContext';
+import { AuthProvider } from '../contexts/AuthContext';
 import Vibes from '../components/Vibes';
 import Login from '../components/Login';
+import { useAuth } from '~/contexts/AuthContext';
 
 const App: React.FC = () => {
   return (
@@ -12,8 +13,8 @@ const App: React.FC = () => {
 };
 
 const AppContent: React.FC = () => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <Vibes /> : <Login />;
+  const { isAuthenticated, isGuest } = useAuth();
+  return isAuthenticated || isGuest ? <Vibes /> : <Login />;
 };
 
 export default App;

@@ -7,7 +7,7 @@ import axios from 'axios';
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login } = useAuth();
+  const { login, continueAsGuest } = useAuth();
 
   const handleLogin = async () => {
     try {
@@ -29,6 +29,7 @@ const Login: React.FC = () => {
 
   return (
     <View style={styles.container}>
+      <Text style={styles.welcomeText}>Welcome to Vibes</Text>
       <TextInput
         style={styles.input}
         placeholder="Email"
@@ -44,8 +45,14 @@ const Login: React.FC = () => {
         onChangeText={setPassword}
         secureTextEntry
       />
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
+      <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
         <Text style={styles.buttonText}>Login</Text>
+      </TouchableOpacity>
+      <TouchableOpacity 
+        style={styles.guestButton} 
+        onPress={continueAsGuest}
+      >
+        <Text style={styles.guestButtonText}>Continue as Guest</Text>
       </TouchableOpacity>
     </View>
   );
@@ -58,20 +65,39 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#1E1E1E',
   },
+  welcomeText: {
+    color: 'white',
+    fontSize: 24,
+    textAlign: 'center',
+    marginBottom: 30,
+  },
   input: {
     backgroundColor: 'white',
     padding: 15,
     borderRadius: 5,
     marginBottom: 10,
   },
-  button: {
+  loginButton: {
     backgroundColor: '#4CAF50',
     padding: 15,
     borderRadius: 5,
     alignItems: 'center',
+    marginBottom: 10,
+  },
+  guestButton: {
+    backgroundColor: 'transparent',
+    padding: 15,
+    borderRadius: 5,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#666666',
   },
   buttonText: {
     color: 'white',
+    fontSize: 16,
+  },
+  guestButtonText: {
+    color: '#666666',
     fontSize: 16,
   },
 });

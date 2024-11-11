@@ -16,6 +16,7 @@ import axios from 'axios';
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import { Container } from '~/components/Container';
 import Slider from '@react-native-community/slider';
+import { useAuth } from '~/contexts/AuthContext';
 
 let fadeAnim = new Animated.Value(1);
 
@@ -78,7 +79,31 @@ const Vibes: React.FC = () => {
     cachedAudio: null,
   });
 
+  const { isAuthenticated, isGuest, logout } = useAuth();
+
   const styles = StyleSheet.create({
+    loginPrompt: {
+      position: 'absolute',
+      top: 40,
+      right: 20,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      padding: 10,
+      borderRadius: 5,
+      zIndex: 2
+    },
+    loginPromptText: {
+      color: 'white',
+      fontSize: 12,
+    },
+    logoutButton: {
+      position: 'absolute',
+      top: 40,
+      left: 20,
+      padding: 10,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      borderRadius: 20,
+      zIndex: 1,
+    },
     container: {
       flex: 1,
       margin: 0,
@@ -553,6 +578,20 @@ const Vibes: React.FC = () => {
   return (
     <>
       <Container>
+        {isAuthenticated && (
+          <TouchableOpacity style={styles.logoutButton} onPress={logout} testID="logout-button">
+            <Ionicons name="log-out" size={24} color="white" />
+          </TouchableOpacity>
+        )}
+
+        {isGuest && (
+          <TouchableOpacity
+            style={styles.loginPrompt}
+            onPress={logout} // This will return to login screen
+          >
+            <Text style={styles.loginPromptText}>Login for more features</Text>
+          </TouchableOpacity>
+        )}
         {loadingState.isInitializing && (
           <View style={loadingStyles.loadingContainer}>
             <Ionicons name="reload-circle" size={50} color="white" />
