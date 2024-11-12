@@ -8,6 +8,7 @@ import {
   Image,
   Animated,
   ViewStyle,
+  Modal,
 } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +18,7 @@ import { Audio, AVPlaybackStatus } from 'expo-av';
 import { Container } from '~/components/Container';
 import Slider from '@react-native-community/slider';
 import { useAuth } from '~/contexts/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 let fadeAnim = new Animated.Value(1);
 
@@ -45,6 +47,247 @@ interface LoadingState {
   error: string | null;
 }
 
+interface TransitionSettings {
+  interval: number;
+}
+
+const DEFAULT_INTERVAL = 5000;
+const MIN_INTERVAL = 3000;
+const MAX_INTERVAL = 30000;
+
+const TransitionSettingsModal: React.FC<{
+  visible: boolean;
+  onClose: () => void;
+  settings: TransitionSettings;
+  onSave: (interval: number) => void;
+}> = ({ visible, onClose, settings, onSave }) => {
+  const [tempInterval, setTempInterval] = useState(settings.interval);
+
+  return (
+    <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={onClose}>
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Image Transition Settings</Text>
+
+          <Text style={styles.modalLabel}>Interval: {(tempInterval / 1000).toFixed(1)}s</Text>
+
+          <Slider
+            style={styles.settingsSlider}
+            value={tempInterval}
+            minimumValue={MIN_INTERVAL}
+            maximumValue={MAX_INTERVAL}
+            step={500}
+            minimumTrackTintColor="#FFFFFF"
+            maximumTrackTintColor="#666666"
+            thumbTintColor="#FFFFFF"
+            onValueChange={setTempInterval}
+          />
+
+          <View style={styles.modalButtons}>
+            <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={onClose}>
+              <Text style={styles.modalButtonText}>Cancel</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.modalButton, styles.saveButton]}
+              onPress={() => {
+                onSave(tempInterval);
+                onClose();
+              }}>
+              <Text style={styles.modalButtonText}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+const styles = StyleSheet.create({
+  settingsButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 3,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#1E1E1E',
+    padding: 20,
+    borderRadius: 10,
+    width: '80%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalLabel: {
+    color: 'white',
+    marginBottom: 10,
+  },
+  settingsSlider: {
+    width: '100%',
+    height: 40,
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  modalButton: {
+    padding: 10,
+    borderRadius: 5,
+    width: '45%',
+  },
+  saveButton: {
+    backgroundColor: '#4CAF50',
+  },
+  cancelButton: {
+    backgroundColor: '#666',
+  },
+  modalButtonText: {
+    color: 'white',
+    textAlign: 'center',
+    fontSize: 16,
+  },
+  loginPrompt: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 10,
+    borderRadius: 5,
+    zIndex: 2,
+  },
+  loginPromptText: {
+    color: 'white',
+    fontSize: 12,
+  },
+  logoutButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    padding: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 20,
+    zIndex: 1,
+  },
+  container: {
+    flex: 1,
+    margin: 0,
+    padding: 0,
+    fontFamily: 'Merriweather Sans',
+  },
+  imageContainer: {
+    flex: 1,
+    position: 'relative',
+    alignItems: 'center',
+  },
+  imageWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+    maxWidth: '96%',
+    maxHeight: '90%',
+    alignSelf: 'center',
+    borderRadius: 8,
+  },
+  debugText: {
+    color: 'white',
+    marginVertical: '1%',
+    fontSize: 14,
+  },
+  errorText: {
+    color: '#ff4444',
+  },
+  controlsContainer: {
+    position: 'absolute',
+    bottom: '10%',
+    width: '90%',
+    alignSelf: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: '4%',
+    margin: '4%',
+    borderRadius: 10,
+    maxWidth: 600,
+    zIndex: 2,
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: '4%',
+  },
+  progressSlider: {
+    flex: 1,
+    marginHorizontal: '2%',
+  },
+  timeText: {
+    color: 'white',
+    fontSize: 12,
+    minWidth: 45,
+    textAlign: 'center',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: '4%',
+    width: '100%',
+  },
+  controlButton: {
+    marginHorizontal: '3%',
+    padding: '2%',
+  },
+  volumeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 500,
+  },
+  volumeLabel: {
+    color: 'white',
+    marginRight: '2%',
+    fontSize: 14,
+    minWidth: 80,
+  },
+  volumeSlider: {
+    flex: 1,
+    height: 40,
+  },
+  offlineIndicator: {
+    position: 'absolute',
+    top: '2%',
+    right: '2%',
+    backgroundColor: 'rgba(255, 215, 0, 0.8)',
+    padding: '2%',
+    borderRadius: 5,
+  },
+  offlineText: {
+    color: '#000',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+});
+
 const Vibes: React.FC = () => {
   const [images, setImages] = useState<ImageResponse[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
@@ -72,137 +315,10 @@ const Vibes: React.FC = () => {
   });
 
   const { isAuthenticated, isGuest, logout } = useAuth();
-
-  const styles = StyleSheet.create({
-    loginPrompt: {
-      position: 'absolute',
-      top: 40,
-      right: 20,
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
-      padding: 10,
-      borderRadius: 5,
-      zIndex: 2,
-    },
-    loginPromptText: {
-      color: 'white',
-      fontSize: 12,
-    },
-    logoutButton: {
-      position: 'absolute',
-      top: 40,
-      left: 20,
-      padding: 10,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      borderRadius: 20,
-      zIndex: 1,
-    },
-    container: {
-      flex: 1,
-      margin: 0,
-      padding: 0,
-      fontFamily: "Merriweather Sans",
-    },
-    imageContainer: {
-      flex: 1,
-      position: 'relative',
-      alignItems: 'center',
-    },
-    imageWrapper: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    image: {
-      width: '100%',
-      height: '100%',
-      position: 'absolute',
-      maxWidth: '96%',
-      maxHeight: '90%',
-      alignSelf: 'center',
-      borderRadius: 8,
-    },
-    debugText: {
-      color: 'white',
-      marginVertical: '1%',
-      fontSize: 14,
-    },
-    errorText: {
-      color: '#ff4444',
-    },
-    controlsContainer: {
-      position: 'absolute',
-      bottom: '10%',
-      width: '90%',
-      alignSelf: 'center',
-      alignItems: 'center',
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
-      padding: '4%',
-      margin: '4%',
-      borderRadius: 10,
-      maxWidth: 600,
-      zIndex: 2,
-    },
-    progressContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      width: '100%',
-      marginBottom: '4%',
-    },
-    progressSlider: {
-      flex: 1,
-      marginHorizontal: '2%',
-    },
-    timeText: {
-      color: 'white',
-      fontSize: 12,
-      minWidth: 45,
-      textAlign: 'center',
-    },
-    buttonContainer: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: '4%',
-      width: '100%',
-    },
-    controlButton: {
-      marginHorizontal: '3%',
-      padding: '2%',
-    },
-    volumeContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      width: '100%',
-      maxWidth: 500,
-    },
-    volumeLabel: {
-      color: 'white',
-      marginRight: '2%',
-      fontSize: 14,
-      minWidth: 80,
-    },
-    volumeSlider: {
-      flex: 1,
-      height: 40,
-    },
-    offlineIndicator: {
-      position: 'absolute',
-      top: '2%',
-      right: '2%',
-      backgroundColor: 'rgba(255, 215, 0, 0.8)',
-      padding: '2%',
-      borderRadius: 5,
-    },
-    offlineText: {
-      color: '#000',
-      fontWeight: 'bold',
-      fontSize: 14,
-    },
+  const [transitionSettings, setTransitionSettings] = useState<TransitionSettings>({
+    interval: DEFAULT_INTERVAL,
   });
+  const [showSettings, setShowSettings] = useState(false);
 
   const loadingStyles = StyleSheet.create({
     loadingContainer: {
@@ -250,14 +366,7 @@ const Vibes: React.FC = () => {
 
     checkConnectivity();
     return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    const fetchAndLogImages = async () => {
-      await fetchImages();
-    };
-    fetchAndLogImages();
-  }, []);
+  }, [])
 
   const preloadImage = async (uri: string): Promise<boolean> => {
     return Image.prefetch(uri);
@@ -338,7 +447,7 @@ const Vibes: React.FC = () => {
       setCurrentImage(formatUrl(images[0].src));
     }
 
-    const intervalId = setInterval(cycleImage, 30000);
+    const intervalId = setInterval(cycleImage, transitionSettings.interval);
 
     return () => {
       clearInterval(intervalId);
@@ -567,9 +676,53 @@ const Vibes: React.FC = () => {
     return 'volume-medium';
   };
 
+  useEffect(() => {
+    const loadSavedSettings = async () => {
+      try {
+        const savedSettings = await AsyncStorage.getItem('@transition_settings');
+        if (savedSettings) {
+          setTransitionSettings(JSON.parse(savedSettings));
+        }
+      } catch (error) {
+        console.error('Error loading saved settings:', error);
+      }
+    };
+
+    loadSavedSettings();
+  }, []);
+
   return (
     <>
       <Container>
+        <TouchableOpacity style={styles.settingsButton} onPress={() => setShowSettings(true)}>
+          <Ionicons name="settings" size={24} color="white" />
+        </TouchableOpacity>
+
+        <TransitionSettingsModal
+          visible={showSettings}
+          onClose={() => setShowSettings(false)}
+          settings={transitionSettings}
+          onSave={async (interval) => {
+            try {
+              // Save to AsyncStorage
+              await AsyncStorage.setItem(
+                '@transition_settings',
+                JSON.stringify({
+                  interval,
+                })
+              );
+
+              setTransitionSettings((prev) => ({
+                ...prev,
+                interval,
+              }));
+            } catch (error) {
+              console.error('Error saving settings:', error);
+              Alert.alert('Error', 'Failed to save settings');
+            }
+          }}
+        />
+
         {isAuthenticated && (
           <TouchableOpacity style={styles.logoutButton} onPress={logout} testID="logout-button">
             <Ionicons name="log-out" size={24} color="white" />
