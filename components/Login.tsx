@@ -1,8 +1,18 @@
 // app/components/Login.tsx
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Text, StyleSheet, Alert } from 'react-native';
+import {
+  View,
+  TextInput,
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  Alert,
+  Dimensions,
+} from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
+
+const { width } = Dimensions.get('window');
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -48,10 +58,7 @@ const Login: React.FC = () => {
       <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
         <Text style={styles.buttonText}>Login</Text>
       </TouchableOpacity>
-      <TouchableOpacity 
-        style={styles.guestButton} 
-        onPress={continueAsGuest}
-      >
+      <TouchableOpacity style={styles.guestButton} onPress={continueAsGuest}>
         <Text style={styles.guestButtonText}>Continue as Guest</Text>
       </TouchableOpacity>
     </View>
@@ -64,10 +71,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20,
     backgroundColor: '#1E1E1E',
+    width: width > 900 ? 700 : '100%',
+    alignSelf: 'center',
+    borderRadius: width > 900 ? 10 : 0,
+    margin: width > 900 ? 10 : 0,
   },
   welcomeText: {
     color: 'white',
-    fontSize: 24,
+    fontSize: width > 400 ? 24 : 20,
     textAlign: 'center',
     marginBottom: 30,
   },
@@ -76,6 +87,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 5,
     marginBottom: 10,
+    width: '100%',
   },
   loginButton: {
     backgroundColor: '#4CAF50',
@@ -83,6 +95,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     alignItems: 'center',
     marginBottom: 10,
+    width: '100%',
   },
   guestButton: {
     backgroundColor: 'transparent',
@@ -91,14 +104,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#666666',
+    width: '100%',
   },
   buttonText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: width > 400 ? 16 : 14,
   },
   guestButtonText: {
     color: '#666666',
-    fontSize: 16,
+    fontSize: width > 400 ? 16 : 14,
   },
 });
 

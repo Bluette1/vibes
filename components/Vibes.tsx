@@ -100,6 +100,7 @@ const Vibes: React.FC = () => {
       flex: 1,
       margin: 0,
       padding: 0,
+      fontFamily: "Merriweather Sans",
     },
     imageContainer: {
       flex: 1,
