@@ -1,10 +1,9 @@
 {
   "expo": {
     "name": "Vibes",
-    "slug": "Vibes",
+    "slug": "vibes",
     "version": "1.0.0",
-
-    "scheme": "Vibes",
+    "scheme": "vibes",
     "web": {
       "bundler": "metro",
       "output": "static",
@@ -13,17 +12,13 @@
     "plugins": ["expo-router"],
     "experiments": {
       "typedRoutes": true,
-
       "tsconfigPaths": true
     },
-
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-
     "userInterfaceStyle": "light",
-
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/screenshot-vibes-home-page.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -35,6 +30,12 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
+      },
+      "package": "com.marys.vibes"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "6a43fa1c-5faf-4ed7-82cd-7f80816db88e"
       }
     }
   }

@@ -109,4 +109,19 @@ export class CacheService {
       console.error('Failed to remove cached file:', error);
     }
   }
+
+  static async clearOldCache() {
+    try {
+      // Get the cache index to remove all files
+      const index = await this.getCacheIndex();
+      for (const item of index) {
+        await FileSystem.deleteAsync(item.localPath, { idempotent: true });
+      }
+      // Clear the cache index
+      await AsyncStorage.removeItem(this.CACHE_INDEX_KEY);
+      console.log('Cache cleared successfully.');
+    } catch (error) {
+      console.error('Failed to clear cache:', error);
+    }
+  }
 }
