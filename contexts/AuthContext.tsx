@@ -11,7 +11,6 @@ interface AuthContextType {
   continueAsGuest: () => void;
 }
 
-
 // Export the context
 export const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,

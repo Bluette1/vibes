@@ -366,7 +366,7 @@ const Vibes: React.FC = () => {
 
     checkConnectivity();
     return () => unsubscribe();
-  }, [])
+  }, []);
 
   const preloadImage = async (uri: string): Promise<boolean> => {
     return Image.prefetch(uri);

@@ -16,8 +16,9 @@
   "jest": {
     "preset": "jest-expo",
     "testTimeout": 20000,
-    "setupFilesAfterEnv": ["./jest.setup.js"]
-
+    "setupFilesAfterEnv": [
+      "./jest.setup.js"
+    ]
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.0",
