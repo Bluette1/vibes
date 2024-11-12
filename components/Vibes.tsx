@@ -457,7 +457,8 @@ const Vibes: React.FC = () => {
 
   // Modify the fetchImages function
   const fetchImages = async () => {
-    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://vibes-api-space-f970ef69ea72.herokuapp.com';
+    const apiUrl =
+      process.env.EXPO_PUBLIC_API_URL || 'https://vibes-api-space-f970ef69ea72.herokuapp.com';
     try {
       if (offlineState.isOffline) {
         const cachedImagesUrls = Object.keys(offlineState.cachedImages);

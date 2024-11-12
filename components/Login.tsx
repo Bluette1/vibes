@@ -24,7 +24,8 @@ const Login: React.FC = () => {
 
   const handleLogin = async () => {
     try {
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://vibes-api-space-f970ef69ea72.herokuapp.com';
+      const apiUrl =
+        process.env.EXPO_PUBLIC_API_URL || 'https://vibes-api-space-f970ef69ea72.herokuapp.com';
       const response = await axios.post(`${apiUrl}/users/tokens/sign_in`, {
         email,
         password,
