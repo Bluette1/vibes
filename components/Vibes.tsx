@@ -105,8 +105,8 @@ const TransitionSettingsModal: React.FC<{
 const styles = StyleSheet.create({
   settingsButton: {
     position: 'absolute',
-    top: 50,
-    right: 20,
+    top: 60,
+    right: 50,
     zIndex: 3,
   },
   modalContainer: {
@@ -160,8 +160,8 @@ const styles = StyleSheet.create({
   },
   loginPrompt: {
     position: 'absolute',
-    top: 40,
-    right: 20,
+    top: 60,
+    right: 90,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     padding: 10,
     borderRadius: 5,
@@ -174,11 +174,11 @@ const styles = StyleSheet.create({
   logoutButton: {
     position: 'absolute',
     top: 40,
-    left: 20,
+    left: 40,
     padding: 10,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     borderRadius: 20,
-    zIndex: 1,
+    zIndex: 3,
   },
   container: {
     flex: 1,
@@ -199,6 +199,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 10,
   },
   image: {
     width: '100%',
@@ -207,7 +208,7 @@ const styles = StyleSheet.create({
     maxWidth: '96%',
     maxHeight: '90%',
     alignSelf: 'center',
-    borderRadius: 8,
+    borderRadius: 10,
   },
   debugText: {
     color: 'white',
@@ -456,7 +457,7 @@ const Vibes: React.FC = () => {
 
   // Modify the fetchImages function
   const fetchImages = async () => {
-    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://vibes-api-space-f970ef69ea72.herokuapp.com';
     try {
       if (offlineState.isOffline) {
         const cachedImagesUrls = Object.keys(offlineState.cachedImages);
@@ -734,7 +735,7 @@ const Vibes: React.FC = () => {
             style={styles.loginPrompt}
             onPress={logout} // This will return to login screen
           >
-            <Text style={styles.loginPromptText}>Login for more features</Text>
+            <Ionicons name="log-out" size={24} color="white" />
           </TouchableOpacity>
         )}
         {loadingState.isInitializing && (

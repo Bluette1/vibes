@@ -7,9 +7,11 @@ import {
   StyleSheet,
   Alert,
   Dimensions,
+  ImageBackground,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
+const backgroundImage = require('../assets/screenshot-vibes-home-page.png'); // Adjust the path as necessary
 
 const { width } = Dimensions.get('window');
 
@@ -37,8 +39,13 @@ const Login: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.welcomeText}>Welcome to Vibes</Text>
+    <ImageBackground 
+      source={backgroundImage} 
+      style={styles.container} 
+      resizeMode="cover" // or 'contain', depending on your needs
+    >
+      <View style={styles.innerContainer}>
+      <Text style={styles.welcomeText}>Vibes</Text>
       <TextInput
         style={styles.input}
         placeholder="Email"
@@ -58,9 +65,11 @@ const Login: React.FC = () => {
         <Text style={styles.buttonText}>Login</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.guestButton} onPress={continueAsGuest}>
-        <Text style={styles.guestButtonText}>Continue as Guest</Text>
+        <Text style={styles.guestButtonText}>Continue to Vibes</Text>
       </TouchableOpacity>
     </View>
+    </ImageBackground>
+    
   );
 };
 
@@ -69,7 +78,15 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 20,
-    backgroundColor: '#1E1E1E',
+    width: '100%',
+    alignSelf: 'center',
+    borderRadius: width > 900 ? 10 : 0,
+    margin: width > 900 ? 10 : 0,
+  },
+  innerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 20,
     width: width > 900 ? 700 : '100%',
     alignSelf: 'center',
     borderRadius: width > 900 ? 10 : 0,
