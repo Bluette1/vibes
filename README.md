@@ -1,4 +1,3 @@
-
 # Vibes: Meditative App
 
 Welcome to Vibes, a meditative app built with React Native and Expo. This project aims to provide users with a serene and calming experience through guided meditations and mindfulness exercises.
@@ -7,7 +6,6 @@ Welcome to Vibes, a meditative app built with React Native and Expo. This projec
 [Deployed Site](https://brown-lurleen-15.tiiny.site/)
 
 [Backend - Vibes API](https://github.com/Bluette1/vibes-api)
-
 
 ## Key Features
 
@@ -95,6 +93,25 @@ We welcome contributions! Please fork the repository and create a pull request w
 [User Stories](https://www.notion.so/User-Stories-Vibes-11fe6a4d98f280c98b15d37c90890c0e)
 [MVP User Stories](https://www.notion.so/MVP-User-Stories-Vibes-11fe6a4d98f2807cb1eccc3d0d54eba6?pvs=4)
 
+# Acknowledgments
+
+## Background Music
+
+The meditation tracks in this application are sourced from:
+
+- [Free Music Archive](https://freemusicarchive.org/)
+  - Collection of ambient and meditation music
+  - License: Various Creative Commons licenses (CC BY, CC BY-SA)
+
+## License Notes
+
+Please note that while these tracks are free to use, some may require attribution depending on their specific licenses. Always check the individual license terms before using in your own projects.
+
+For more meditation music resources, visit:
+
+- [Peaceful Meditation Tracks](https://freemusicarchive.org/genre/Ambient)
+- [Ambient Sound Collection](https://pixabay.com/music/search/meditation/)
+
 ## License
 
 This project is licensed under the MIT License.
@@ -102,4 +119,3 @@ This project is licensed under the MIT License.
 ## Contact
 
 For any inquiries, please reach out to the repository owner.
-

@@ -86,7 +86,7 @@ const TransitionSettingsModal: React.FC<{
     <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Image Transition Settings</Text>
+          <Text style={styles.modalTitle}>Image Transition</Text>
 
           <Text style={styles.modalLabel}>Interval: {(tempInterval / 1000).toFixed(1)}s</Text>
 
@@ -111,12 +111,12 @@ const TransitionSettingsModal: React.FC<{
 
           {showTrackList && (
             <View>
-              <Text style={styles.modalTitle}>Music Track Settings</Text>
+              <Text style={styles.modalTitle}>Music Track</Text>
               <View style={styles.trackListContainer}>
                 <FlatList
                   data={tracks}
                   renderItem={renderTrackItem}
-                  keyExtractor={(item) => item.id}
+                  keyExtractor={(item) => `track-${item.id}`}
                   style={styles.trackList}
                 />
               </View>
@@ -704,7 +704,7 @@ const Vibes: React.FC = () => {
         Alert.alert('Error', 'Failed to load audio file');
       }
     },
-    [volume, offlineState.isOffline, offlineState.cachedAudio, currentTrack, handleSave]
+    [volume, offlineState.isOffline, offlineState.cachedAudio]
   );
 
   const handlePlayPause = useCallback(async () => {
