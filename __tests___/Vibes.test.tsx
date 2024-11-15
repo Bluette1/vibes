@@ -343,4 +343,3 @@ describe('Vibes Component', () => {
     (CacheService.cacheFile as jest.Mock).mockRestore();
   });
 });
-
