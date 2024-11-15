@@ -8,7 +8,6 @@ import {
   Image,
   Animated,
   ViewStyle,
-  Modal,
 } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +18,8 @@ import { Container } from '~/components/Container';
 import Slider from '@react-native-community/slider';
 import { useAuth } from '~/contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Track, tracks } from '~/app/config/tracks';
+import TransitionSettingsModal from './TransitionSettingsModal';
 
 let fadeAnim = new Animated.Value(1);
 
@@ -52,111 +53,13 @@ interface TransitionSettings {
 }
 
 const DEFAULT_INTERVAL = 5000;
-const MIN_INTERVAL = 3000;
-const MAX_INTERVAL = 30000;
 
-const TransitionSettingsModal: React.FC<{
-  visible: boolean;
-  onClose: () => void;
-  settings: TransitionSettings;
-  onSave: (interval: number) => void;
-}> = ({ visible, onClose, settings, onSave }) => {
-  const [tempInterval, setTempInterval] = useState(settings.interval);
-
-  return (
-    <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Image Transition Settings</Text>
-
-          <Text style={styles.modalLabel}>Interval: {(tempInterval / 1000).toFixed(1)}s</Text>
-
-          <Slider
-            style={styles.settingsSlider}
-            value={tempInterval}
-            minimumValue={MIN_INTERVAL}
-            maximumValue={MAX_INTERVAL}
-            step={500}
-            minimumTrackTintColor="#FFFFFF"
-            maximumTrackTintColor="#666666"
-            thumbTintColor="#FFFFFF"
-            onValueChange={setTempInterval}
-          />
-
-          <View style={styles.modalButtons}>
-            <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={onClose}>
-              <Text style={styles.modalButtonText}>Cancel</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.modalButton, styles.saveButton]}
-              onPress={() => {
-                onSave(tempInterval);
-                onClose();
-              }}>
-              <Text style={styles.modalButtonText}>Save</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-};
 const styles = StyleSheet.create({
   settingsButton: {
     position: 'absolute',
     top: 60,
     right: 50,
     zIndex: 3,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
-    backgroundColor: '#1E1E1E',
-    padding: 20,
-    borderRadius: 10,
-    width: '80%',
-    maxWidth: 400,
-  },
-  modalTitle: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  modalLabel: {
-    color: 'white',
-    marginBottom: 10,
-  },
-  settingsSlider: {
-    width: '100%',
-    height: 40,
-    marginBottom: 20,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  modalButton: {
-    padding: 10,
-    borderRadius: 5,
-    width: '45%',
-  },
-  saveButton: {
-    backgroundColor: '#4CAF50',
-  },
-  cancelButton: {
-    backgroundColor: '#666',
-  },
-  modalButtonText: {
-    color: 'white',
-    textAlign: 'center',
-    fontSize: 16,
   },
   loginPrompt: {
     position: 'absolute',
@@ -165,7 +68,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     padding: 10,
     borderRadius: 5,
-    zIndex: 2,
+    zIndex: 3,
   },
   loginPromptText: {
     color: 'white',
@@ -321,6 +224,8 @@ const Vibes: React.FC = () => {
   });
   const [showSettings, setShowSettings] = useState(false);
 
+  const [currentTrack, setCurrentTrack] = useState<Track>(tracks[0]);
+
   const loadingStyles = StyleSheet.create({
     loadingContainer: {
       backgroundColor: 'rgba(30, 30, 30, 0.9)',
@@ -377,7 +282,15 @@ const Vibes: React.FC = () => {
     const initializeApp = async () => {
       setLoadingState((prev) => ({ ...prev, isLoading: true, error: null }));
       try {
-        await Promise.all([fetchImages(), loadSound()]);
+        const savedSettings = await AsyncStorage.getItem('@transitionSettings');
+        if (savedSettings) {
+          setTransitionSettings(JSON.parse(savedSettings));
+        }
+        const lastTrackId = (await AsyncStorage.getItem('@lastTrackId')) || '1';
+        const track = tracks.find((t) => t.id === lastTrackId) || tracks[0];
+        setCurrentTrack(track);
+        await Promise.all([fetchImages(), loadSound(track)]);
+
         setLoadingState((prev) => ({
           ...prev,
           isInitializing: false,
@@ -394,6 +307,12 @@ const Vibes: React.FC = () => {
     };
 
     initializeApp();
+    return () => {
+      if (sound) {
+        sound.unloadAsync();
+      }
+      CacheService.clearOldCache;
+    };
   }, []); // Empty dependency array for initial load only
 
   // Add retry handler
@@ -457,8 +376,7 @@ const Vibes: React.FC = () => {
 
   // Modify the fetchImages function
   const fetchImages = async () => {
-    const apiUrl =
-      process.env.EXPO_PUBLIC_API_URL || 'https://vibes-api-space-f970ef69ea72.herokuapp.com';
+    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
     try {
       if (offlineState.isOffline) {
         const cachedImagesUrls = Object.keys(offlineState.cachedImages);
@@ -501,84 +419,102 @@ const Vibes: React.FC = () => {
     }
   };
 
-  const loadSound = useCallback(async () => {
+  const handleSave = async (interval: any, selectedTrack: Track | undefined) => {
     try {
-      if (sound) {
-        await sound.unloadAsync();
-      }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        staysActiveInBackground: true,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
-      });
-
-      // Handle offline audio
-      let audioSource;
-      if (offlineState.isOffline && offlineState.cachedAudio) {
-        audioSource = { uri: offlineState.cachedAudio };
-      } else {
-        audioSource = require('../assets/focused.mp3');
-        // Cache the audio file if online
-        if (!offlineState.isOffline) {
-          try {
-            const cachedPath = await CacheService.cacheFile(audioSource);
-            setOfflineState((prev) => ({ ...prev, cachedAudio: cachedPath }));
-          } catch (error) {
-            console.error('Failed to cache audio:', error);
-          }
-        }
-      }
-
-      const { sound: soundObject, status: initialStatus } = await Audio.Sound.createAsync(
-        audioSource,
-        {
-          shouldPlay: false,
-          volume,
-          progressUpdateIntervalMillis: 100,
-          isLooping: true,
-        },
-        onPlaybackStatusUpdate
+      await AsyncStorage.setItem(
+        '@transitionSettings',
+        JSON.stringify({
+          interval,
+        })
       );
 
-      setSound(soundObject);
+      setTransitionSettings((prev) => ({
+        ...prev,
+        interval,
+      }));
+      if (sound) {
+        const playbackStatus = await sound.getStatusAsync();
+        if (playbackStatus.isLoaded && playbackStatus.isPlaying) {
+          await sound.pauseAsync();
+        }
+      }
+      setTimeout(async () => {
+        await loadSound(selectedTrack);
+      }, 1000);
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      Alert.alert('Error', 'Failed to save settings');
+    }
+  };
 
-      if ('isLoaded' in initialStatus && initialStatus.isLoaded) {
+  const loadSound = useCallback(
+    async (track = currentTrack) => {
+      try {
+        if (sound) {
+          await sound.unloadAsync();
+        }
+
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          staysActiveInBackground: true,
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+        });
+
+        // Handle offline audio
+        let audioSource;
+        if (offlineState.isOffline && offlineState.cachedAudio) {
+          audioSource = { uri: offlineState.cachedAudio };
+        } else {
+          audioSource = track.file;
+          // Cache the audio file if online
+          if (!offlineState.isOffline) {
+            try {
+              const cachedPath = await CacheService.cacheFile(audioSource);
+              setOfflineState((prev) => ({ ...prev, cachedAudio: cachedPath }));
+            } catch (error) {
+              console.error('Failed to cache audio:', error);
+            }
+          }
+        }
+
+        const { sound: soundObject, status: initialStatus } = await Audio.Sound.createAsync(
+          audioSource,
+          {
+            shouldPlay: false,
+            volume,
+            progressUpdateIntervalMillis: 100,
+            isLooping: true,
+          },
+          onPlaybackStatusUpdate
+        );
+
+        setSound(soundObject);
+        setCurrentTrack(track);
+        await AsyncStorage.setItem('@lastTrackId', track.id);
+
+        if ('isLoaded' in initialStatus && initialStatus.isLoaded) {
+          setStatus((prev) => ({
+            ...prev,
+            isLoaded: true,
+            isPlaying: initialStatus.isPlaying,
+            isBuffering: initialStatus.isBuffering,
+          }));
+          setDuration(initialStatus.durationMillis ?? 0);
+        }
+      } catch (error) {
+        console.error('Detailed error loading sound:', error);
         setStatus((prev) => ({
           ...prev,
-          isLoaded: true,
-          isPlaying: initialStatus.isPlaying,
-          isBuffering: initialStatus.isBuffering,
+          error: `Failed to load audio file: ${error}`,
+          isLoaded: false,
         }));
-        setDuration(initialStatus.durationMillis ?? 0);
+        Alert.alert('Error', 'Failed to load audio file');
       }
-    } catch (error) {
-      console.error('Detailed error loading sound:', error);
-      setStatus((prev) => ({
-        ...prev,
-        error: `Failed to load audio file: ${error}`,
-        isLoaded: false,
-      }));
-      Alert.alert('Error', 'Failed to load audio file');
-    }
-  }, [volume, offlineState.isOffline, offlineState.cachedAudio]);
-
-  useEffect(() => {
-    const initSound = async () => {
-      await loadSound();
-    };
-
-    initSound();
-
-    return () => {
-      if (sound) {
-        sound.unloadAsync();
-      }
-      CacheService.clearOldCache;
-    };
-  }, []);
+    },
+    [volume, offlineState.isOffline, offlineState.cachedAudio]
+  );
 
   const handlePlayPause = useCallback(async () => {
     try {
@@ -681,10 +617,13 @@ const Vibes: React.FC = () => {
   useEffect(() => {
     const loadSavedSettings = async () => {
       try {
-        const savedSettings = await AsyncStorage.getItem('@transition_settings');
+        const savedSettings = await AsyncStorage.getItem('@transitionSettings');
         if (savedSettings) {
           setTransitionSettings(JSON.parse(savedSettings));
         }
+        const lastTrackId = (await AsyncStorage.getItem('@lastTrackId')) || '1';
+        const track = tracks.find((t) => t.id === lastTrackId) || tracks[0];
+        setCurrentTrack(track);
       } catch (error) {
         console.error('Error loading saved settings:', error);
       }
@@ -704,25 +643,8 @@ const Vibes: React.FC = () => {
           visible={showSettings}
           onClose={() => setShowSettings(false)}
           settings={transitionSettings}
-          onSave={async (interval) => {
-            try {
-              // Save to AsyncStorage
-              await AsyncStorage.setItem(
-                '@transition_settings',
-                JSON.stringify({
-                  interval,
-                })
-              );
-
-              setTransitionSettings((prev) => ({
-                ...prev,
-                interval,
-              }));
-            } catch (error) {
-              console.error('Error saving settings:', error);
-              Alert.alert('Error', 'Failed to save settings');
-            }
-          }}
+          currentTrack={currentTrack}
+          onSave={handleSave}
         />
 
         {isAuthenticated && (
@@ -804,7 +726,6 @@ const Vibes: React.FC = () => {
             />
             <Text style={styles.timeText}>{formatTime(duration)}</Text>
           </View>
-
           <View style={styles.buttonContainer}>
             <TouchableOpacity
               onPress={handlePlayPause}

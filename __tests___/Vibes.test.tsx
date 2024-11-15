@@ -117,7 +117,7 @@ describe('Vibes Component', () => {
     await act(async () => {
       await waitFor(() => {
         const actualCall = Audio.Sound.createAsync.mock.calls[0];
-        expect(actualCall[0]).toBe(require('../assets/focused.mp3')); // Explicit file comparison
+        expect(actualCall[0]).toBe(require('../assets/audio/focused.mp3')); // Explicit file comparison
         expect(actualCall[1]).toEqual({
           isLooping: true,
           progressUpdateIntervalMillis: 100,
