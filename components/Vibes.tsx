@@ -68,6 +68,24 @@ const TransitionSettingsModal: React.FC<{
   const [showTrackList, setShowTrackList] = useState(false);
   const [selectedTrack, setSelectedTrack] = useState<Track>(currentTrack);
 
+  useEffect(() => {
+    const loadSavedSettings = async () => {
+      try {
+        const savedSettings = await AsyncStorage.getItem('@transitionSettings');
+        if (savedSettings) {
+          setTempInterval(JSON.parse(savedSettings).interval);
+        }
+        const lastTrackId = (await AsyncStorage.getItem('@lastTrackId')) || '1';
+        const track = tracks.find((t) => t.id === lastTrackId) || tracks[0];
+        setSelectedTrack(track);
+      } catch (error) {
+        console.error('Error loading saved settings:', error);
+      }
+    };
+
+    loadSavedSettings();
+  }, []);
+
   const handleTrackSelect = async (track: Track) => {
     setShowTrackList(false);
     setSelectedTrack(track);
@@ -567,7 +585,7 @@ const Vibes: React.FC = () => {
   // Modify the fetchImages function
   const fetchImages = async () => {
     const apiUrl =
-      process.env.EXPO_PUBLIC_API_URL || 'https://vibes-api-space-f970ef69ea72.herokuapp.com';
+      process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
     try {
       if (offlineState.isOffline) {
         const cachedImagesUrls = Object.keys(offlineState.cachedImages);
@@ -629,7 +647,7 @@ const Vibes: React.FC = () => {
           await sound.pauseAsync();
         }
       }
-      setTimeout(async() => {
+      setTimeout(async () => {
         await loadSound(selectedTrack);
       }, 2000);
     } catch (error) {
