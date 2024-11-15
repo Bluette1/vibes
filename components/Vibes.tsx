@@ -57,7 +57,7 @@ const DEFAULT_INTERVAL = 5000;
 const MIN_INTERVAL = 3000;
 const MAX_INTERVAL = 30000;
 
-const TransitionSettingsModal: React.FC<{
+export const TransitionSettingsModal: React.FC<{
   visible: boolean;
   onClose: () => void;
   settings: TransitionSettings;
@@ -91,9 +91,14 @@ const TransitionSettingsModal: React.FC<{
     setSelectedTrack(track);
   };
 
+ 
   const renderTrackItem = ({ item }: { item: Track }) => (
     <TouchableOpacity
-      style={[styles.trackItem, currentTrack.id === item.id && styles.selectedTrack]}
+      testID={`track-item-${item.id}`}
+      style={[
+        styles.trackItem,
+        selectedTrack.id === item.id && styles.selectedTrack
+      ]}
       onPress={() => handleTrackSelect(item)}>
       <Text style={styles.trackTitle}>{item.title}</Text>
       <Text style={styles.trackCategory}>{item.category}</Text>
@@ -104,11 +109,14 @@ const TransitionSettingsModal: React.FC<{
     <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Image Transition</Text>
+          <Text style={styles.modalTitle}>Image Transition Settings</Text>
 
-          <Text style={styles.modalLabel}>Interval: {(tempInterval / 1000).toFixed(1)}s</Text>
+          <Text testID="interval-text" style={styles.modalLabel}>
+            Interval: {(tempInterval / 1000).toFixed(1)}s
+          </Text>
 
           <Slider
+            testID="interval-slider"
             style={styles.settingsSlider}
             value={tempInterval}
             minimumValue={MIN_INTERVAL}
@@ -121,15 +129,22 @@ const TransitionSettingsModal: React.FC<{
           />
 
           <TouchableOpacity
+            testID="current-track-button"
             style={styles.currentTrackButton}
             onPress={() => setShowTrackList(!showTrackList)}>
-            <Text style={styles.currentTrackText}>{selectedTrack.title}</Text>
-            <Text style={styles.categoryText}>{selectedTrack.category}</Text>
+            <Text testID="current-track-title" style={styles.currentTrackText}>
+              {selectedTrack.title}
+            </Text>
+            <Text testID="current-track-category" style={styles.categoryText}>
+              {selectedTrack.category}
+            </Text>
           </TouchableOpacity>
 
           {showTrackList && (
             <View>
-              <Text style={styles.modalTitle}>Music Track</Text>
+              <Text testID="track-list-title" style={styles.modalTitle}>
+                Music Track Settings
+              </Text>
               <View style={styles.trackListContainer}>
                 <FlatList
                   data={tracks}
@@ -142,11 +157,15 @@ const TransitionSettingsModal: React.FC<{
           )}
 
           <View style={styles.modalButtons}>
-            <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={onClose}>
+            <TouchableOpacity 
+              testID="cancel-button"
+              style={[styles.modalButton, styles.cancelButton]} 
+              onPress={onClose}>
               <Text style={styles.modalButtonText}>Cancel</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
+              testID="save-button"
               style={[styles.modalButton, styles.saveButton]}
               onPress={() => {
                 onSave(tempInterval, selectedTrack);
@@ -649,7 +668,7 @@ const Vibes: React.FC = () => {
       }
       setTimeout(async () => {
         await loadSound(selectedTrack);
-      }, 2000);
+      }, 1000);
     } catch (error) {
       console.error('Error saving settings:', error);
       Alert.alert('Error', 'Failed to save settings');
