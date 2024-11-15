@@ -9,6 +9,7 @@ import {
   Animated,
   ViewStyle,
   Modal,
+  FlatList,
 } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +20,7 @@ import { Container } from '~/components/Container';
 import Slider from '@react-native-community/slider';
 import { useAuth } from '~/contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Track, tracks } from '~/app/config/tracks';
 
 let fadeAnim = new Animated.Value(1);
 
@@ -59,9 +61,26 @@ const TransitionSettingsModal: React.FC<{
   visible: boolean;
   onClose: () => void;
   settings: TransitionSettings;
-  onSave: (interval: number) => void;
-}> = ({ visible, onClose, settings, onSave }) => {
+  onSave: (interval: number, track: Track) => void;
+  currentTrack: Track;
+}> = ({ visible, onClose, settings, onSave, currentTrack }) => {
   const [tempInterval, setTempInterval] = useState(settings.interval);
+  const [showTrackList, setShowTrackList] = useState(false);
+  const [selectedTrack, setSelectedTrack] = useState<Track>(currentTrack);
+
+  const handleTrackSelect = async (track: Track) => {
+    setShowTrackList(false);
+    setSelectedTrack(track);
+  };
+
+  const renderTrackItem = ({ item }: { item: Track }) => (
+    <TouchableOpacity
+      style={[styles.trackItem, currentTrack.id === item.id && styles.selectedTrack]}
+      onPress={() => handleTrackSelect(item)}>
+      <Text style={styles.trackTitle}>{item.title}</Text>
+      <Text style={styles.trackCategory}>{item.category}</Text>
+    </TouchableOpacity>
+  );
 
   return (
     <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={onClose}>
@@ -83,6 +102,27 @@ const TransitionSettingsModal: React.FC<{
             onValueChange={setTempInterval}
           />
 
+          <TouchableOpacity
+            style={styles.currentTrackButton}
+            onPress={() => setShowTrackList(!showTrackList)}>
+            <Text style={styles.currentTrackText}>{selectedTrack.title}</Text>
+            <Text style={styles.categoryText}>{selectedTrack.category}</Text>
+          </TouchableOpacity>
+
+          {showTrackList && (
+            <View>
+              <Text style={styles.modalTitle}>Music Track Settings</Text>
+              <View style={styles.trackListContainer}>
+                <FlatList
+                  data={tracks}
+                  renderItem={renderTrackItem}
+                  keyExtractor={(item) => item.id}
+                  style={styles.trackList}
+                />
+              </View>
+            </View>
+          )}
+
           <View style={styles.modalButtons}>
             <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={onClose}>
               <Text style={styles.modalButtonText}>Cancel</Text>
@@ -91,7 +131,7 @@ const TransitionSettingsModal: React.FC<{
             <TouchableOpacity
               style={[styles.modalButton, styles.saveButton]}
               onPress={() => {
-                onSave(tempInterval);
+                onSave(tempInterval, selectedTrack);
                 onClose();
               }}>
               <Text style={styles.modalButtonText}>Save</Text>
@@ -165,7 +205,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     padding: 10,
     borderRadius: 5,
-    zIndex: 2,
+    zIndex: 3,
   },
   loginPromptText: {
     color: 'white',
@@ -287,6 +327,59 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 14,
   },
+  currentTrackButton: {
+    padding: 15,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    marginBottom: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  currentTrackText: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  categoryText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+    textTransform: 'capitalize',
+  },
+  trackListContainer: {
+    maxHeight: 300,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    marginBottom: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  trackList: {
+    padding: 10,
+  },
+  trackItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  selectedTrack: {
+    backgroundColor: '#f0f0f0',
+  },
+  trackTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  trackCategory: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+    textTransform: 'capitalize',
+  },
 });
 
 const Vibes: React.FC = () => {
@@ -320,6 +413,8 @@ const Vibes: React.FC = () => {
     interval: DEFAULT_INTERVAL,
   });
   const [showSettings, setShowSettings] = useState(false);
+
+  const [currentTrack, setCurrentTrack] = useState<Track>(tracks[0]);
 
   const loadingStyles = StyleSheet.create({
     loadingContainer: {
@@ -377,7 +472,15 @@ const Vibes: React.FC = () => {
     const initializeApp = async () => {
       setLoadingState((prev) => ({ ...prev, isLoading: true, error: null }));
       try {
-        await Promise.all([fetchImages(), loadSound()]);
+        const savedSettings = await AsyncStorage.getItem('@transitionSettings');
+        if (savedSettings) {
+          setTransitionSettings(JSON.parse(savedSettings));
+        }
+        const lastTrackId = (await AsyncStorage.getItem('@lastTrackId')) || '1';
+        const track = tracks.find((t) => t.id === lastTrackId) || tracks[0];
+        setCurrentTrack(track);
+        await Promise.all([fetchImages(), loadSound(track)]);
+
         setLoadingState((prev) => ({
           ...prev,
           isInitializing: false,
@@ -394,6 +497,12 @@ const Vibes: React.FC = () => {
     };
 
     initializeApp();
+    return () => {
+      if (sound) {
+        sound.unloadAsync();
+      }
+      CacheService.clearOldCache;
+    };
   }, []); // Empty dependency array for initial load only
 
   // Add retry handler
@@ -501,84 +610,102 @@ const Vibes: React.FC = () => {
     }
   };
 
-  const loadSound = useCallback(async () => {
+  const handleSave = async (interval: any, selectedTrack: Track | undefined) => {
     try {
-      if (sound) {
-        await sound.unloadAsync();
-      }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        staysActiveInBackground: true,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
-      });
-
-      // Handle offline audio
-      let audioSource;
-      if (offlineState.isOffline && offlineState.cachedAudio) {
-        audioSource = { uri: offlineState.cachedAudio };
-      } else {
-        audioSource = require('../assets/focused.mp3');
-        // Cache the audio file if online
-        if (!offlineState.isOffline) {
-          try {
-            const cachedPath = await CacheService.cacheFile(audioSource);
-            setOfflineState((prev) => ({ ...prev, cachedAudio: cachedPath }));
-          } catch (error) {
-            console.error('Failed to cache audio:', error);
-          }
-        }
-      }
-
-      const { sound: soundObject, status: initialStatus } = await Audio.Sound.createAsync(
-        audioSource,
-        {
-          shouldPlay: false,
-          volume,
-          progressUpdateIntervalMillis: 100,
-          isLooping: true,
-        },
-        onPlaybackStatusUpdate
+      await AsyncStorage.setItem(
+        '@transitionSettings',
+        JSON.stringify({
+          interval,
+        })
       );
 
-      setSound(soundObject);
+      setTransitionSettings((prev) => ({
+        ...prev,
+        interval,
+      }));
+      if (sound) {
+        const playbackStatus = await sound.getStatusAsync();
+        if (playbackStatus.isLoaded && playbackStatus.isPlaying) {
+          await sound.pauseAsync();
+        }
+      }
+      setTimeout(async() => {
+        await loadSound(selectedTrack);
+      }, 2000);
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      Alert.alert('Error', 'Failed to save settings');
+    }
+  };
 
-      if ('isLoaded' in initialStatus && initialStatus.isLoaded) {
+  const loadSound = useCallback(
+    async (track = currentTrack) => {
+      try {
+        if (sound) {
+          await sound.unloadAsync();
+        }
+
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          staysActiveInBackground: true,
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+        });
+
+        // Handle offline audio
+        let audioSource;
+        if (offlineState.isOffline && offlineState.cachedAudio) {
+          audioSource = { uri: offlineState.cachedAudio };
+        } else {
+          audioSource = track.file;
+          // Cache the audio file if online
+          if (!offlineState.isOffline) {
+            try {
+              const cachedPath = await CacheService.cacheFile(audioSource);
+              setOfflineState((prev) => ({ ...prev, cachedAudio: cachedPath }));
+            } catch (error) {
+              console.error('Failed to cache audio:', error);
+            }
+          }
+        }
+
+        const { sound: soundObject, status: initialStatus } = await Audio.Sound.createAsync(
+          audioSource,
+          {
+            shouldPlay: false,
+            volume,
+            progressUpdateIntervalMillis: 100,
+            isLooping: true,
+          },
+          onPlaybackStatusUpdate
+        );
+
+        setSound(soundObject);
+        setCurrentTrack(track);
+        await AsyncStorage.setItem('@lastTrackId', track.id);
+
+        if ('isLoaded' in initialStatus && initialStatus.isLoaded) {
+          setStatus((prev) => ({
+            ...prev,
+            isLoaded: true,
+            isPlaying: initialStatus.isPlaying,
+            isBuffering: initialStatus.isBuffering,
+          }));
+          setDuration(initialStatus.durationMillis ?? 0);
+        }
+      } catch (error) {
+        console.error('Detailed error loading sound:', error);
         setStatus((prev) => ({
           ...prev,
-          isLoaded: true,
-          isPlaying: initialStatus.isPlaying,
-          isBuffering: initialStatus.isBuffering,
+          error: `Failed to load audio file: ${error}`,
+          isLoaded: false,
         }));
-        setDuration(initialStatus.durationMillis ?? 0);
+        Alert.alert('Error', 'Failed to load audio file');
       }
-    } catch (error) {
-      console.error('Detailed error loading sound:', error);
-      setStatus((prev) => ({
-        ...prev,
-        error: `Failed to load audio file: ${error}`,
-        isLoaded: false,
-      }));
-      Alert.alert('Error', 'Failed to load audio file');
-    }
-  }, [volume, offlineState.isOffline, offlineState.cachedAudio]);
-
-  useEffect(() => {
-    const initSound = async () => {
-      await loadSound();
-    };
-
-    initSound();
-
-    return () => {
-      if (sound) {
-        sound.unloadAsync();
-      }
-      CacheService.clearOldCache;
-    };
-  }, []);
+    },
+    [volume, offlineState.isOffline, offlineState.cachedAudio, currentTrack, handleSave]
+  );
 
   const handlePlayPause = useCallback(async () => {
     try {
@@ -681,10 +808,13 @@ const Vibes: React.FC = () => {
   useEffect(() => {
     const loadSavedSettings = async () => {
       try {
-        const savedSettings = await AsyncStorage.getItem('@transition_settings');
+        const savedSettings = await AsyncStorage.getItem('@transitionSettings');
         if (savedSettings) {
           setTransitionSettings(JSON.parse(savedSettings));
         }
+        const lastTrackId = (await AsyncStorage.getItem('@lastTrackId')) || '1';
+        const track = tracks.find((t) => t.id === lastTrackId) || tracks[0];
+        setCurrentTrack(track);
       } catch (error) {
         console.error('Error loading saved settings:', error);
       }
@@ -704,25 +834,8 @@ const Vibes: React.FC = () => {
           visible={showSettings}
           onClose={() => setShowSettings(false)}
           settings={transitionSettings}
-          onSave={async (interval) => {
-            try {
-              // Save to AsyncStorage
-              await AsyncStorage.setItem(
-                '@transition_settings',
-                JSON.stringify({
-                  interval,
-                })
-              );
-
-              setTransitionSettings((prev) => ({
-                ...prev,
-                interval,
-              }));
-            } catch (error) {
-              console.error('Error saving settings:', error);
-              Alert.alert('Error', 'Failed to save settings');
-            }
-          }}
+          currentTrack={currentTrack}
+          onSave={handleSave}
         />
 
         {isAuthenticated && (
@@ -804,7 +917,6 @@ const Vibes: React.FC = () => {
             />
             <Text style={styles.timeText}>{formatTime(duration)}</Text>
           </View>
-
           <View style={styles.buttonContainer}>
             <TouchableOpacity
               onPress={handlePlayPause}

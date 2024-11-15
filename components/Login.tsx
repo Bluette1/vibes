@@ -62,7 +62,6 @@ const Login: React.FC = () => {
   return (
     <ImageBackground source={backgroundImage} style={styles.container} resizeMode="cover">
       <View style={styles.innerContainer}>
-        <Text style={styles.welcomeText}>Vibes</Text>
         <TextInput
           style={styles.input}
           placeholder="Email"
@@ -100,20 +99,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    padding: 20,
-    width: '100%',
     alignSelf: 'center',
-    borderRadius: width > 900 ? 10 : 0,
+    padding: width > 900 ? 10 : 0,
+    width: '100%',
+    borderRadius: 10,
     margin: width > 900 ? 10 : 0,
   },
   innerContainer: {
     flex: 1,
     justifyContent: 'center',
-    padding: 20,
+    padding: width > 900 ? 20 : 10,
     width: width > 900 ? 700 : '100%',
     alignSelf: 'center',
     borderRadius: width > 900 ? 10 : 0,
-    margin: width > 900 ? 10 : 0,
+    margin: width > 900 ? 10 : 5,
   },
   welcomeText: {
     color: 'white',
