@@ -1,6 +1,6 @@
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import TransitionSettingsModal from '../components/TransitionSettingsModal';
-import { tracks } from '../app/config/tracks';
+import { Track } from '../types';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn(),
@@ -13,6 +13,16 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   multiRemove: jest.fn(),
 }));
 describe('TransitionSettingsModal', () => {
+  const tracks: Track[] = [
+    {
+      id: '1',
+      file: 'http://example.com/track1.mp3',
+      title: 'Track 1',
+      category: 'guided session',
+    },
+    { id: '2', file: 'http://example.com/track2.mp3', title: 'Track 2', category: 'nature' },
+  ];
+
   const mockOnClose = jest.fn();
   const mockOnSave = jest.fn();
   const defaultSettings = {
@@ -26,6 +36,7 @@ describe('TransitionSettingsModal', () => {
     onClose: mockOnClose,
     settings: defaultSettings,
     onSave: mockOnSave,
+    tracks,
     currentTrack,
   };
 

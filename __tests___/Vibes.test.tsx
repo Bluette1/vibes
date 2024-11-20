@@ -6,7 +6,6 @@ import { Alert } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { CacheService } from '../utils/cacheService';
 import { AuthContext } from '../contexts/AuthContext';
-
 import Vibes from '../components/Vibes';
 
 // Mock dependencies
@@ -60,6 +59,11 @@ const mockImages = [
   { src: 'http://example.com/image2.jpg', alt: 'Image 2' },
 ];
 
+const mockTracks = [
+  { id: '1', url: 'http://example.com/track1.mp3', title: 'Track 1', audio_type: 'guided session' },
+  { id: '2', url: 'http://example.com/track2.mp3', title: 'Track 2', audio_type: 'nature' },
+];
+
 // Mock sound object
 const mockSound = {
   playAsync: jest.fn(),
@@ -82,9 +86,15 @@ describe('Vibes Component', () => {
       type: 'wifi',
     }));
 
-    // Mock axios get request
-    (axios.get as jest.Mock).mockResolvedValue({ data: mockImages });
-
+    // Mock axios get requests
+    (axios.get as jest.Mock).mockImplementation((url) => {
+      if (url === 'http://localhost:3000/api/images') {
+        return Promise.resolve({ data: mockImages }); // Mock for images
+      } else if (url === 'http://localhost:3000/api/audios') {
+        return Promise.resolve({ data: mockTracks }); // Mock for audio tracks
+      }
+      return Promise.reject(new Error('Not Found')); // Default case
+    });
     // Mock Audio.Sound.createAsync
     (Audio.Sound.createAsync as jest.Mock).mockResolvedValue({
       sound: mockSound,
@@ -117,7 +127,7 @@ describe('Vibes Component', () => {
     await act(async () => {
       await waitFor(() => {
         const actualCall = Audio.Sound.createAsync.mock.calls[0];
-        expect(actualCall[0]).toBe(require('../assets/audio/focused.mp3')); // Explicit file comparison
+        expect(actualCall[0]).toBe('http://example.com/track1.mp3'); // Explicit file comparison
         expect(actualCall[1]).toEqual({
           isLooping: true,
           progressUpdateIntervalMillis: 100,

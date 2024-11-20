@@ -373,12 +373,12 @@ const Vibes: React.FC = () => {
     };
   }, [images, currentImageIndex]);
 
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+
   const fetchTracks = async () => {
     try {
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
-
-      const response = await fetch(`${apiUrl}/api/audios`);
-      const data = await response.json();
+      const response = await axios.get(`${apiUrl}/api/audios`);
+      const data = response.data;
 
       const formattedTracks: Track[] = data.map((track: any) => ({
         id: track.id,
@@ -388,6 +388,7 @@ const Vibes: React.FC = () => {
       }));
 
       setTracks(formattedTracks);
+
       const lastTrackId = (await AsyncStorage.getItem('@lastTrackId')) || '1';
       const track = formattedTracks.find((t) => t.id === lastTrackId) || formattedTracks[0];
       await loadSound(track);
@@ -400,7 +401,6 @@ const Vibes: React.FC = () => {
   };
 
   const fetchImages = async () => {
-    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
     try {
       if (offlineState.isOffline) {
         const cachedImagesUrls = Object.keys(offlineState.cachedImages);
