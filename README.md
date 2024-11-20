@@ -111,6 +111,7 @@ For more meditation music resources, visit:
 
 - [Peaceful Meditation Tracks](https://freemusicarchive.org/genre/Ambient)
 - [Ambient Sound Collection](https://pixabay.com/music/search/meditation/)
+- [Hymnary.org](https://hymnary.org/)
 
 ## License
 

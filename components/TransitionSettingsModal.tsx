@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Modal, FlatList } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { Track, tracks } from '~/app/config/tracks';
+import { Track } from '../types';
 import Slider from '@react-native-community/slider';
 
 interface TransitionSettings {
@@ -17,8 +17,9 @@ const TransitionSettingsModal: React.FC<{
   onClose: () => void;
   settings: TransitionSettings;
   onSave: (interval: number, track: Track) => void;
+  tracks: Track[];
   currentTrack: Track;
-}> = ({ visible, onClose, settings, onSave, currentTrack }) => {
+}> = ({ visible, onClose, settings, onSave, tracks, currentTrack }) => {
   const [tempInterval, setTempInterval] = useState(settings.interval);
   const [showTrackList, setShowTrackList] = useState(false);
   const [selectedTrack, setSelectedTrack] = useState<Track>(currentTrack);
