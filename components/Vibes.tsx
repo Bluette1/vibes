@@ -18,7 +18,7 @@ import { Container } from '~/components/Container';
 import Slider from '@react-native-community/slider';
 import { useAuth } from '~/contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Track, tracks } from '~/app/config/tracks';
+import { Track } from '../types';
 import TransitionSettingsModal from './TransitionSettingsModal';
 
 let fadeAnim = new Animated.Value(1);
@@ -223,8 +223,9 @@ const Vibes: React.FC = () => {
     interval: DEFAULT_INTERVAL,
   });
   const [showSettings, setShowSettings] = useState(false);
+  const [tracks, setTracks] = useState<Track[]>([]);
 
-  const [currentTrack, setCurrentTrack] = useState<Track>(tracks[0]);
+  const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
 
   const loadingStyles = StyleSheet.create({
     loadingContainer: {
@@ -282,14 +283,12 @@ const Vibes: React.FC = () => {
     const initializeApp = async () => {
       setLoadingState((prev) => ({ ...prev, isLoading: true, error: null }));
       try {
+        await Promise.all([fetchImages(), fetchTracks()]);
+
         const savedSettings = await AsyncStorage.getItem('@transitionSettings');
         if (savedSettings) {
           setTransitionSettings(JSON.parse(savedSettings));
         }
-        const lastTrackId = (await AsyncStorage.getItem('@lastTrackId')) || '1';
-        const track = tracks.find((t) => t.id === lastTrackId) || tracks[0];
-        setCurrentTrack(track);
-        await Promise.all([fetchImages(), loadSound(track)]);
 
         setLoadingState((prev) => ({
           ...prev,
@@ -374,9 +373,34 @@ const Vibes: React.FC = () => {
     };
   }, [images, currentImageIndex]);
 
-  // Modify the fetchImages function
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+
+  const fetchTracks = async () => {
+    try {
+      const response = await axios.get(`${apiUrl}/api/audios`);
+      const data = response.data;
+
+      const formattedTracks: Track[] = data.map((track: any) => ({
+        id: track.id,
+        title: track.title,
+        file: track.url,
+        category: track.audio_type,
+      }));
+
+      setTracks(formattedTracks);
+
+      const lastTrackId = (await AsyncStorage.getItem('@lastTrackId')) || '1';
+      const track = formattedTracks.find((t) => t.id === lastTrackId) || formattedTracks[0];
+      await loadSound(track);
+
+      setCurrentTrack(track);
+    } catch (err) {
+      console.error('Failed to fetch tracks:', err);
+      throw err;
+    }
+  };
+
   const fetchImages = async () => {
-    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
     try {
       if (offlineState.isOffline) {
         const cachedImagesUrls = Object.keys(offlineState.cachedImages);
@@ -467,11 +491,11 @@ const Vibes: React.FC = () => {
         if (offlineState.isOffline && offlineState.cachedAudio) {
           audioSource = { uri: offlineState.cachedAudio };
         } else {
-          audioSource = track.file;
+          audioSource = { uri: track.file };
           // Cache the audio file if online
           if (!offlineState.isOffline) {
             try {
-              const cachedPath = await CacheService.cacheFile(audioSource);
+              const cachedPath = await CacheService.cacheFile(track.file);
               setOfflineState((prev) => ({ ...prev, cachedAudio: cachedPath }));
             } catch (error) {
               console.error('Failed to cache audio:', error);
@@ -510,7 +534,6 @@ const Vibes: React.FC = () => {
           error: `Failed to load audio file: ${error}`,
           isLoaded: false,
         }));
-        Alert.alert('Error', 'Failed to load audio file');
       }
     },
     [volume, offlineState.isOffline, offlineState.cachedAudio]
@@ -614,24 +637,6 @@ const Vibes: React.FC = () => {
     return 'volume-medium';
   };
 
-  useEffect(() => {
-    const loadSavedSettings = async () => {
-      try {
-        const savedSettings = await AsyncStorage.getItem('@transitionSettings');
-        if (savedSettings) {
-          setTransitionSettings(JSON.parse(savedSettings));
-        }
-        const lastTrackId = (await AsyncStorage.getItem('@lastTrackId')) || '1';
-        const track = tracks.find((t) => t.id === lastTrackId) || tracks[0];
-        setCurrentTrack(track);
-      } catch (error) {
-        console.error('Error loading saved settings:', error);
-      }
-    };
-
-    loadSavedSettings();
-  }, []);
-
   return (
     <>
       <Container>
@@ -639,13 +644,16 @@ const Vibes: React.FC = () => {
           <Ionicons name="settings" size={24} color="white" />
         </TouchableOpacity>
 
-        <TransitionSettingsModal
-          visible={showSettings}
-          onClose={() => setShowSettings(false)}
-          settings={transitionSettings}
-          currentTrack={currentTrack}
-          onSave={handleSave}
-        />
+        {tracks.length > 0 && currentTrack && (
+          <TransitionSettingsModal
+            visible={showSettings}
+            onClose={() => setShowSettings(false)}
+            settings={transitionSettings}
+            tracks={tracks}
+            currentTrack={currentTrack}
+            onSave={handleSave}
+          />
+        )}
 
         {isAuthenticated && (
           <TouchableOpacity style={styles.logoutButton} onPress={logout} testID="logout-button">

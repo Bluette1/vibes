@@ -28,15 +28,17 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/vibes-high-resolution-logo-transparent.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.marys.vibes"
+      "package": "com.marys.vibes",
+      "permissions": ["INTERNET"]
     },
     "extra": {
       "eas": {
-        "projectId": "6a43fa1c-5faf-4ed7-82cd-7f80816db88e"
+        "projectId": "dc7c7568-a3d0-47a3-a447-924e4397c985"
       }
-    }
+    },
+    "owner": "marylenes"
   }
 }
