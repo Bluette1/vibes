@@ -491,11 +491,11 @@ const Vibes: React.FC = () => {
         if (offlineState.isOffline && offlineState.cachedAudio) {
           audioSource = { uri: offlineState.cachedAudio };
         } else {
-          audioSource = track.file;
+          audioSource = { uri: track.file };
           // Cache the audio file if online
           if (!offlineState.isOffline) {
             try {
-              const cachedPath = await CacheService.cacheFile(audioSource);
+              const cachedPath = await CacheService.cacheFile(track.file);
               setOfflineState((prev) => ({ ...prev, cachedAudio: cachedPath }));
             } catch (error) {
               console.error('Failed to cache audio:', error);
@@ -534,7 +534,6 @@ const Vibes: React.FC = () => {
           error: `Failed to load audio file: ${error}`,
           isLoaded: false,
         }));
-        Alert.alert('Error', 'Failed to load audio file');
       }
     },
     [volume, offlineState.isOffline, offlineState.cachedAudio]

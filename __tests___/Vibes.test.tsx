@@ -127,7 +127,7 @@ describe('Vibes Component', () => {
     await act(async () => {
       await waitFor(() => {
         const actualCall = Audio.Sound.createAsync.mock.calls[0];
-        expect(actualCall[0]).toBe('http://example.com/track1.mp3'); // Explicit file comparison
+        expect(actualCall[0]).toStrictEqual({ uri: 'http://example.com/track1.mp3' });
         expect(actualCall[1]).toEqual({
           isLooping: true,
           progressUpdateIntervalMillis: 100,
@@ -218,7 +218,7 @@ describe('Vibes Component', () => {
     render(<MockedVibesWithAuth />);
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith('Error', 'Failed to load audio file');
+      expect(console.error).toHaveBeenCalledWith('Detailed error loading sound:', error);
     });
   });
 
