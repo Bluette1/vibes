@@ -3,7 +3,7 @@
 Welcome to Vibes, a meditative app built with React Native and Expo. This project aims to provide users with a serene and calming experience through guided meditations and mindfulness exercises.
 ![Screenshot Vibes App](./assets/screenshot-vibes-home-page.png)
 
-[Deployed Site](https://brown-lurleen-15.tiiny.site/)
+[Deployed Site](https://vibes.tiiny.site/)
 
 [Backend - Vibes API](https://github.com/Bluette1/vibes-api)
 
