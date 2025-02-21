@@ -381,7 +381,7 @@ const Vibes: React.FC = () => {
       const data = response.data;
 
       const formattedTracks: Track[] = data.map((track: any) => ({
-        id: track.id,
+        id: `${track.id}`,
         title: track.title,
         file: track.url,
         category: track.audio_type,
@@ -390,6 +390,7 @@ const Vibes: React.FC = () => {
       setTracks(formattedTracks);
 
       const lastTrackId = (await AsyncStorage.getItem('@lastTrackId')) || '1';
+
       const track = formattedTracks.find((t) => t.id === lastTrackId) || formattedTracks[0];
       await loadSound(track);
 
@@ -443,7 +444,7 @@ const Vibes: React.FC = () => {
     }
   };
 
-  const handleSave = async (interval: any, selectedTrack: Track | undefined) => {
+  const handleSave = async (interval: any, selectedTrack: Track | null) => {
     try {
       await AsyncStorage.setItem(
         '@transitionSettings',
@@ -456,15 +457,18 @@ const Vibes: React.FC = () => {
         ...prev,
         interval,
       }));
+
       if (sound) {
         const playbackStatus = await sound.getStatusAsync();
         if (playbackStatus.isLoaded && playbackStatus.isPlaying) {
           await sound.pauseAsync();
         }
       }
-      setTimeout(async () => {
-        await loadSound(selectedTrack);
-      }, 1000);
+      if (selectedTrack) {
+        setTimeout(async () => {
+          await loadSound(selectedTrack);
+        }, 1000);
+      }
     } catch (error) {
       console.error('Error saving settings:', error);
       Alert.alert('Error', 'Failed to save settings');
@@ -472,7 +476,7 @@ const Vibes: React.FC = () => {
   };
 
   const loadSound = useCallback(
-    async (track = currentTrack) => {
+    async (track = currentTrack || tracks[0]) => {
       try {
         if (sound) {
           await sound.unloadAsync();
