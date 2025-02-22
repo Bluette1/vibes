@@ -20,6 +20,7 @@ import { useAuth } from '~/contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Track } from '../types';
 import TransitionSettingsModal from './TransitionSettingsModal';
+import AudioProgressManager from './AudioProgressManager';
 
 let fadeAnim = new Animated.Value(1);
 
@@ -190,6 +191,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 14,
   },
+  sessionProgressText: {
+    color: 'black',
+    fontSize: 14,
+    textAlign: 'center',
+    marginVertical: '2%',
+  },
 });
 
 const Vibes: React.FC = () => {
@@ -224,8 +231,11 @@ const Vibes: React.FC = () => {
   });
   const [showSettings, setShowSettings] = useState(false);
   const [tracks, setTracks] = useState<Track[]>([]);
-
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
+
+  const [sessionProgress, setSessionProgress] = useState<number>(0);
+  const [lastSavedPosition, setLastSavedPosition] = useState<number>(0);
+  const [restoringPosition, setIsRestoringPosition] = useState<boolean>(true);
 
   const loadingStyles = StyleSheet.create({
     loadingContainer: {
@@ -306,15 +316,34 @@ const Vibes: React.FC = () => {
     };
 
     initializeApp();
-    return () => {
-      if (sound) {
-        sound.unloadAsync();
-      }
-      CacheService.clearOldCache;
-    };
-  }, []); // Empty dependency array for initial load only
 
-  // Add retry handler
+    return () => {
+      const cleanup = async () => {
+        if (sound) {
+          try {
+            const status = await sound.getStatusAsync();
+            if (status.isLoaded) {
+              const position = status.positionMillis;
+              await AsyncStorage.setItem(
+                '@audioPosition',
+                JSON.stringify({
+                  position,
+                  trackId: currentTrack?.id,
+                })
+              );
+              console.log('Saved position on cleanup:', position); // Debug log
+            }
+            await sound.unloadAsync();
+          } catch (error) {
+            console.error('Cleanup error:', error);
+          }
+        }
+        CacheService.clearOldCache();
+      };
+
+      cleanup();
+    };
+  }, []);
   const handleRetry = useCallback(() => {
     setLoadingState((prev) => ({
       ...prev,
@@ -342,7 +371,6 @@ const Vibes: React.FC = () => {
           useNativeDriver: true,
         }).start();
 
-        // Set next image
         setNextImage(images[nextIndex].src);
 
         // After fade out, update current image and fade back in
@@ -490,21 +518,11 @@ const Vibes: React.FC = () => {
           playThroughEarpieceAndroid: false,
         });
 
-        // Handle offline audio
         let audioSource;
         if (offlineState.isOffline && offlineState.cachedAudio) {
           audioSource = { uri: offlineState.cachedAudio };
         } else {
           audioSource = { uri: track.file };
-          // Cache the audio file if online
-          if (!offlineState.isOffline) {
-            try {
-              const cachedPath = await CacheService.cacheFile(track.file);
-              setOfflineState((prev) => ({ ...prev, cachedAudio: cachedPath }));
-            } catch (error) {
-              console.error('Failed to cache audio:', error);
-            }
-          }
         }
 
         const { sound: soundObject, status: initialStatus } = await Audio.Sound.createAsync(
@@ -520,7 +538,6 @@ const Vibes: React.FC = () => {
 
         setSound(soundObject);
         setCurrentTrack(track);
-        await AsyncStorage.setItem('@lastTrackId', track.id);
 
         if ('isLoaded' in initialStatus && initialStatus.isLoaded) {
           setStatus((prev) => ({
@@ -529,10 +546,29 @@ const Vibes: React.FC = () => {
             isPlaying: initialStatus.isPlaying,
             isBuffering: initialStatus.isBuffering,
           }));
+
           setDuration(initialStatus.durationMillis ?? 0);
+
+          // Try to restore saved position
+          try {
+            const savedPositionString = await AsyncStorage.getItem('@audioPosition');
+            if (savedPositionString) {
+              const savedData = JSON.parse(savedPositionString);
+              if (savedData.trackId === track.id) {
+                setIsRestoringPosition(true);
+                await soundObject.setPositionAsync(savedData.position);
+                setPosition(savedData.position);
+                setLastSavedPosition(savedData.position);
+                console.log('Restored position:', savedData.position); // Debug log
+                setTimeout(() => setIsRestoringPosition(false), 1000);
+              }
+            }
+          } catch (error) {
+            console.error('Failed to restore position:', error);
+          }
         }
       } catch (error) {
-        console.error('Detailed error loading sound:', error);
+        console.error('Error loading sound:', error);
         setStatus((prev) => ({
           ...prev,
           error: `Failed to load audio file: ${error}`,
@@ -567,7 +603,7 @@ const Vibes: React.FC = () => {
     }
   }, [sound, loadSound]);
 
-  const onPlaybackStatusUpdate = (playbackStatus: AVPlaybackStatus) => {
+  const onPlaybackStatusUpdate = async (playbackStatus: AVPlaybackStatus) => {
     if (!playbackStatus.isLoaded) {
       setStatus((prev) => ({
         ...prev,
@@ -577,6 +613,8 @@ const Vibes: React.FC = () => {
       return;
     }
 
+    const currentPosition = playbackStatus.positionMillis ?? 0;
+
     setStatus((prev) => ({
       ...prev,
       isLoaded: true,
@@ -584,10 +622,12 @@ const Vibes: React.FC = () => {
       isBuffering: playbackStatus.isBuffering,
     }));
 
-    // Provide default value of 0 if positionMillis is undefined
-    setPosition(playbackStatus.positionMillis ?? 0);
+    if (playbackStatus.durationMillis && playbackStatus.durationMillis > 0) {
+      const progress = (currentPosition / playbackStatus.durationMillis) * 100;
+      setSessionProgress(progress);
+    }
 
-    // Provide default value of 0 if durationMillis is undefined
+    setPosition(currentPosition);
     setDuration(playbackStatus.durationMillis ?? 0);
   };
 
@@ -641,9 +681,50 @@ const Vibes: React.FC = () => {
     return 'volume-medium';
   };
 
+  const handlePositionRestore = useCallback(
+    async (restoredPosition: number) => {
+      if (!sound) return;
+
+      try {
+        await sound.setPositionAsync(restoredPosition);
+        setPosition(restoredPosition);
+      } catch (error) {
+        console.error('Failed to restore position:', error);
+      }
+    },
+    [sound]
+  );
+
+  const handlePlaybackStateRestore = useCallback(
+    async (shouldPlay: boolean) => {
+      if (!sound) return;
+
+      try {
+        if (shouldPlay) {
+          await sound.playAsync();
+        } else {
+          await sound.pauseAsync();
+        }
+        setStatus((prev) => ({
+          ...prev,
+          isPlaying: shouldPlay,
+        }));
+      } catch (error) {
+        console.error('Failed to restore playback state:', error);
+      }
+    },
+    [sound]
+  );
+
   return (
     <>
       <Container>
+        <AudioProgressManager
+          currentTrack={currentTrack}
+          sound={sound}
+          onPositionRestore={handlePositionRestore}
+          onPlaybackStateRestore={handlePlaybackStateRestore}
+        />
         <TouchableOpacity style={styles.settingsButton} onPress={() => setShowSettings(true)}>
           <Ionicons name="settings" size={24} color="white" />
         </TouchableOpacity>
@@ -791,6 +872,9 @@ const Vibes: React.FC = () => {
             />
           </View>
         </View>
+        <Text style={styles.sessionProgressText}>
+          Session Progress: {sessionProgress.toFixed(2)}%
+        </Text>
       </Container>
     </>
   );
