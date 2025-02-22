@@ -337,8 +337,8 @@ const Vibes: React.FC = () => {
           } catch (error) {
             console.error('Cleanup error:', error);
           }
+          CacheService.clearOldCache();
         }
-        CacheService.clearOldCache();
       };
 
       cleanup();
