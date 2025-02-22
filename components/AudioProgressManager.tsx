@@ -4,7 +4,6 @@ import { Audio } from 'expo-av';
 import { Track } from '../types';
 
 const POSITION_UPDATE_INTERVAL = 1000;
-const POSITION_STORAGE_KEY = '@audioPosition';
 const PLAYBACK_STATE_KEY = '@playbackState';
 
 interface AudioProgressManagerProps {
@@ -30,7 +29,6 @@ const AudioProgressManager: React.FC<AudioProgressManagerProps> = ({
         const status = await sound.getStatusAsync();
         if (!status.isLoaded) return;
 
-        // Save both position and playback state
         const playbackData = {
           position: status.positionMillis,
           isPlaying: status.isPlaying,
@@ -44,6 +42,19 @@ const AudioProgressManager: React.FC<AudioProgressManagerProps> = ({
       }
     };
 
+    // Add this function to properly cleanup audio
+    const cleanupAudio = async () => {
+      try {
+        await savePlaybackState();
+        if (sound) {
+          await sound.stopAsync();
+          await sound.unloadAsync();
+        }
+      } catch (error) {
+        console.error('Error cleaning up audio:', error);
+      }
+    };
+
     const restorePlaybackState = async () => {
       try {
         const savedStateString = await AsyncStorage.getItem(PLAYBACK_STATE_KEY);
@@ -51,7 +62,6 @@ const AudioProgressManager: React.FC<AudioProgressManagerProps> = ({
 
         const savedState = JSON.parse(savedStateString);
 
-        // Only restore if it's the same track and within last hour
         const isRecent = Date.now() - savedState.timestamp < 60 * 60 * 1000;
         if (savedState.trackId === currentTrack.id && isRecent) {
           await onPositionRestore(savedState.position);
@@ -62,22 +72,17 @@ const AudioProgressManager: React.FC<AudioProgressManagerProps> = ({
       }
     };
 
-    // Start periodic saving
     intervalId = setInterval(savePlaybackState, POSITION_UPDATE_INTERVAL);
-
-    // Restore state when component mounts
     restorePlaybackState();
 
     return () => {
       if (intervalId) {
         clearInterval(intervalId);
       }
-      // Save state one final time when unmounting
-      savePlaybackState();
+      cleanupAudio();
     };
   }, [currentTrack, sound, onPositionRestore, onPlaybackStateRestore]);
 
   return null;
 };
-
 export default AudioProgressManager;

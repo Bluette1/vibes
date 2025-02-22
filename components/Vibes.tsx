@@ -506,8 +506,14 @@ const Vibes: React.FC = () => {
   const loadSound = useCallback(
     async (track = currentTrack || tracks[0]) => {
       try {
+        // First, cleanup any existing sound
         if (sound) {
-          await sound.unloadAsync();
+          const currentStatus = await sound.getStatusAsync();
+          if (currentStatus.isLoaded) {
+            await sound.stopAsync();
+            await sound.unloadAsync();
+          }
+          setSound(undefined);
         }
 
         await Audio.setAudioModeAsync({
@@ -540,43 +546,25 @@ const Vibes: React.FC = () => {
         setCurrentTrack(track);
 
         if ('isLoaded' in initialStatus && initialStatus.isLoaded) {
-          setStatus((prev) => ({
-            ...prev,
+          setStatus({
             isLoaded: true,
             isPlaying: initialStatus.isPlaying,
             isBuffering: initialStatus.isBuffering,
-          }));
+          });
 
           setDuration(initialStatus.durationMillis ?? 0);
-
-          // Try to restore saved position
-          try {
-            const savedPositionString = await AsyncStorage.getItem('@audioPosition');
-            if (savedPositionString) {
-              const savedData = JSON.parse(savedPositionString);
-              if (savedData.trackId === track.id) {
-                setIsRestoringPosition(true);
-                await soundObject.setPositionAsync(savedData.position);
-                setPosition(savedData.position);
-                setLastSavedPosition(savedData.position);
-                console.log('Restored position:', savedData.position); // Debug log
-                setTimeout(() => setIsRestoringPosition(false), 1000);
-              }
-            }
-          } catch (error) {
-            console.error('Failed to restore position:', error);
-          }
         }
       } catch (error) {
         console.error('Error loading sound:', error);
-        setStatus((prev) => ({
-          ...prev,
-          error: `Failed to load audio file: ${error}`,
+        setStatus({
           isLoaded: false,
-        }));
+          isPlaying: false,
+          isBuffering: false,
+          error: `Failed to load audio file: ${error}`,
+        });
       }
     },
-    [volume, offlineState.isOffline, offlineState.cachedAudio]
+    [volume, offlineState.isOffline, offlineState.cachedAudio, sound]
   );
 
   const handlePlayPause = useCallback(async () => {
@@ -715,6 +703,31 @@ const Vibes: React.FC = () => {
     },
     [sound]
   );
+
+  useEffect(() => {
+    return () => {
+      const cleanup = async () => {
+        if (sound) {
+          try {
+            const status = await sound.getStatusAsync();
+            if (status.isLoaded) {
+              await sound.stopAsync();
+              await sound.unloadAsync();
+              setSound(undefined); // Clear the sound reference
+              setStatus({
+                isLoaded: false,
+                isPlaying: false,
+                isBuffering: false,
+              });
+            }
+          } catch (error) {
+            console.error('Cleanup error:', error);
+          }
+        }
+      };
+      cleanup();
+    };
+  }, [sound]);
 
   return (
     <>
