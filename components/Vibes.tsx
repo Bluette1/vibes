@@ -234,9 +234,6 @@ const Vibes: React.FC = () => {
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
 
   const [sessionProgress, setSessionProgress] = useState<number>(0);
-  const [lastSavedPosition, setLastSavedPosition] = useState<number>(0);
-  const [restoringPosition, setIsRestoringPosition] = useState<boolean>(true);
-
   const loadingStyles = StyleSheet.create({
     loadingContainer: {
       backgroundColor: 'rgba(30, 30, 30, 0.9)',
@@ -319,26 +316,18 @@ const Vibes: React.FC = () => {
 
     return () => {
       const cleanup = async () => {
+        if (currentTrack) {
+          await AsyncStorage.setItem('@lastTrackId', currentTrack.id);
+          await AsyncStorage.setItem('@lastTrackData', JSON.stringify(currentTrack));
+        }
         if (sound) {
           try {
-            const status = await sound.getStatusAsync();
-            if (status.isLoaded) {
-              const position = status.positionMillis;
-              await AsyncStorage.setItem(
-                '@audioPosition',
-                JSON.stringify({
-                  position,
-                  trackId: currentTrack?.id,
-                })
-              );
-              console.log('Saved position on cleanup:', position); // Debug log
-            }
             await sound.unloadAsync();
           } catch (error) {
             console.error('Cleanup error:', error);
           }
-          CacheService.clearOldCache();
         }
+        CacheService.clearOldCache();
       };
 
       cleanup();
@@ -417,12 +406,39 @@ const Vibes: React.FC = () => {
 
       setTracks(formattedTracks);
 
-      const lastTrackId = (await AsyncStorage.getItem('@lastTrackId')) || '1';
+      // Try to restore last track
+      const lastTrackId = await AsyncStorage.getItem('@lastTrackId');
+      const lastTrackData = await AsyncStorage.getItem('@lastTrackData');
 
-      const track = formattedTracks.find((t) => t.id === lastTrackId) || formattedTracks[0];
-      await loadSound(track);
+      let trackToLoad;
 
-      setCurrentTrack(track);
+      if (lastTrackId && lastTrackData) {
+        // First try to find the track in the newly fetched tracks
+        trackToLoad = formattedTracks.find((t) => t.id === lastTrackId);
+
+        if (!trackToLoad) {
+          // If track not found in new tracks, use the saved track data
+          try {
+            const savedTrack = JSON.parse(lastTrackData);
+            // Verify the saved track data has all required fields
+            if (savedTrack.id && savedTrack.title && savedTrack.file) {
+              trackToLoad = savedTrack;
+            }
+          } catch (e) {
+            console.error('Error parsing saved track data:', e);
+          }
+        }
+      }
+
+      // If no valid saved track, use the first track
+      if (!trackToLoad && formattedTracks.length > 0) {
+        trackToLoad = formattedTracks[0];
+      }
+
+      if (trackToLoad) {
+        await loadSound(trackToLoad);
+        setCurrentTrack(trackToLoad);
+      }
     } catch (err) {
       console.error('Failed to fetch tracks:', err);
       throw err;
@@ -472,8 +488,9 @@ const Vibes: React.FC = () => {
     }
   };
 
-  const handleSave = async (interval: any, selectedTrack: Track | null) => {
+  const handleSave = async (interval: number, selectedTrack: Track | null) => {
     try {
+      // Save transition settings
       await AsyncStorage.setItem(
         '@transitionSettings',
         JSON.stringify({
@@ -486,15 +503,23 @@ const Vibes: React.FC = () => {
         interval,
       }));
 
-      if (sound) {
-        const playbackStatus = await sound.getStatusAsync();
-        if (playbackStatus.isLoaded && playbackStatus.isPlaying) {
-          await sound.pauseAsync();
-        }
-      }
+      // Save selected track
       if (selectedTrack) {
+        await AsyncStorage.setItem('@lastTrackId', selectedTrack.id);
+        await AsyncStorage.setItem('@lastTrackData', JSON.stringify(selectedTrack));
+
+        // If sound is currently playing, stop it before loading new track
+        if (sound) {
+          const playbackStatus = await sound.getStatusAsync();
+          if (playbackStatus.isLoaded && playbackStatus.isPlaying) {
+            await sound.pauseAsync();
+          }
+        }
+
+        // Load the new track after a short delay
         setTimeout(async () => {
           await loadSound(selectedTrack);
+          setCurrentTrack(selectedTrack);
         }, 1000);
       }
     } catch (error) {
