@@ -218,7 +218,7 @@ describe('Vibes Component', () => {
     render(<MockedVibesWithAuth />);
 
     await waitFor(() => {
-      expect(console.error).toHaveBeenCalledWith('Detailed error loading sound:', error);
+      expect(console.error).toHaveBeenCalledWith('Error loading sound:', error);
     });
   });
 

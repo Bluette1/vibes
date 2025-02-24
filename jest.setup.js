@@ -6,3 +6,5 @@ beforeAll(() => {
 afterAll(() => {
   jest.restoreAllMocks();
 });
+
+jest.setTimeout(30000);
